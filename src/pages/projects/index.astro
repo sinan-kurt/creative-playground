@@ -1,0 +1,4 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';import ProjectGallery from '../../components/ProjectGallery.astro';import {getCollection} from 'astro:content';const projects=(await getCollection('projects')).sort((a,b)=>b.data.year-a.data.year);
+---
+<BaseLayout title="Projeler — Sinan Kurt"><section class="wrap pt-14"><p class="kicker muted">ARCHIVE / ALL WORK</p><h1 class="display font-bold text-5xl sm:text-7xl mt-4">Bütün projeler.</h1><p class="muted mt-4 max-w-xl">Yayınlanmış ürünler, prototipler ve küçük deneyler. Her biri yeni bir şey öğrenme bahanesi.</p></section><ProjectGallery projects={projects}/></BaseLayout>
