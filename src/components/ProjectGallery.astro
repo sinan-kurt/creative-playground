@@ -1,0 +1,12 @@
+---
+import ProjectCard from './ProjectCard.astro';
+import type { CollectionEntry } from 'astro:content';
+const { projects } = Astro.props as { projects: CollectionEntry<'projects'>[] };
+---
+<section id="projects" class="wrap py-12 sm:py-20"><div class="flex flex-wrap justify-between items-end gap-4 mb-7"><div><p class="kicker muted mb-2">THE PROJECT INDEX / 001</p><h2 class="display text-4xl sm:text-6xl font-bold">Made by me<span class="text-[#8b7ee0]">.</span></h2></div><p class="text-sm muted">Fikir → prototip → gerçek ürün.</p></div>
+<div class="flex flex-wrap gap-2 mb-8" role="group" aria-label="Proje kategorileri" id="filters">{['All','Play','Products','Experiments','Design'].map((name,i)=><button class={`filter rounded-full px-4 py-2 text-sm font-semibold border border-ink ${i===0?'bg-ink text-white':'bg-transparent'}`} data-filter={name} aria-pressed={i===0?'true':'false'}>{name}</button>)}</div>
+<div id="project-grid" class="grid sm:grid-cols-2 gap-7 sm:gap-9">{projects.map(project=><ProjectCard project={project}/>)}</div><p id="empty-filter" class="hidden py-12 muted">Bu kategoride henüz proje yok.</p></section>
+<script>
+const filters = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+filters.forEach(b=>b.addEventListener('click',()=>{const active=b.dataset.filter;filters.forEach(x=>{const on=x===b;x.setAttribute('aria-pressed',String(on));x.classList.toggle('bg-ink',on);x.classList.toggle('text-white',on)});let shown=0;document.querySelectorAll<HTMLElement>('.project-card').forEach(card=>{const visible=active==='All'||card.dataset.category===active;card.hidden=!visible;card.style.display=visible?'':'none';if(visible)shown++});document.getElementById('empty-filter')?.classList.toggle('hidden',shown>0)}));
+</script>
