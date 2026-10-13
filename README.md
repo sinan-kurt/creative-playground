@@ -38,3 +38,4 @@ Cloudflare Pages, Netlify veya Vercel: Build `npm run build`, çıktı `dist`. `
 ## Not
 
 Bu depo V1 kaynak aktarımıdır. Canlı dağıtım ve üretim derlemesi ayrıca doğrulanmalıdır.
+Cloudflare Pages: https://creative-playground.pages.dev (GitHub main branch)
