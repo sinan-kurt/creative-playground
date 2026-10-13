@@ -1,0 +1,12 @@
+---
+import type { CollectionEntry } from 'astro:content';
+const {project} = Astro.props as { project: CollectionEntry<'projects'> };
+---
+<article class="project-card group" data-category={project.data.category}>
+  <a href={`/projects/${project.id}/`} class="block rounded-[28px] overflow-hidden relative p-5 sm:p-7 min-h-[270px] sm:min-h-[330px] transition-transform duration-300 hover:-translate-y-1.5" style={`background:${project.data.color};color:${project.data.ink}`}>
+    <div class="flex justify-between items-start gap-3"><span class="kicker">{project.data.eyebrow}</span><span aria-hidden="true" class="text-2xl transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1">↗</span></div>
+    <div aria-hidden="true" class="grid place-items-center text-[94px] sm:text-[120px] h-[148px] sm:h-[185px] group-hover:scale-110 transition-transform duration-500 select-none">{project.data.icon}</div>
+    <div><h3 class="display text-2xl sm:text-3xl font-bold">{project.data.title}</h3><p class="text-sm mt-1 opacity-75 line-clamp-2">{project.data.description}</p></div>
+  </a>
+  <div class="flex gap-3 items-center justify-between pt-3 px-1 text-sm"><span class="kicker text-ink/60">{project.data.category} / {project.data.year}</span>{project.data.live && <a class="underline underline-offset-4 font-semibold" href={project.data.live} target="_blank" rel="noopener noreferrer">Hemen dene ↗</a>}</div>
+</article>
