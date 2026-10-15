@@ -1,0 +1,216 @@
+---
+// Örnek tema "Beyin": ortada dönen metal beyin; tıklayınca içine girilir, fikirler nöron olarak açılır.
+// Adres: /temalar/beyin  ·  Etkileşim kodu: src/scripts/brain.js (fikir listesi dosyanın başında, IDEAS)
+const title = 'Sinan Kurt — Fikirlerim burada';
+const description = 'Web uygulamaları, oyunlar ve girişimler. Beyne tıkla, içeri gir.';
+const ogImage = new URL('/temalar/beyin-og.png', Astro.site).toString();
+---
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>{title}</title>
+<meta name="description" content={description}/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content={title}/>
+<meta property="og:description" content={description}/>
+<meta property="og:image" content={ogImage}/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="theme-color" content="#150E1D"/>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500&display=swap"/>
+</head>
+<body>
+<style is:global>
+/* Layout: tek sahne. Ortada dönen metal beyin; tıklayınca kamera içeri dalar, fikirler nöron olarak açılır. Altta düz liste yedeği. */
+:root {
+  --bg: #150E1D;
+  --bg-glow: #2C1A3C;
+  --fg: #F4EEE6;
+  --muted: #B3A6B9;
+  --line: rgba(244, 238, 230, 0.14);
+  --metal: #E7B964;
+  --panel: rgba(28, 19, 38, 0.86);
+  --f-display: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-display); overflow-x: clip; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--metal); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3, p { margin: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+#app { min-height: 100vh; display: flex; flex-direction: column; background: radial-gradient(60% 55% at 50% 48%, var(--bg-glow), var(--bg) 70%); }
+
+.bar { position: relative; z-index: 20; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 16px; }
+@media (min-width: 760px) { .bar { padding: 22px 36px; } }
+.name { font-weight: 700; font-size: 18px; letter-spacing: -0.02em; text-decoration: none; }
+.name span { color: var(--metal); }
+.bar nav { display: flex; gap: 2px 18px; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+.bar nav a { text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.bar nav a:hover { color: var(--fg); }
+
+.stage { position: relative; flex: 1; min-height: 560px; height: calc(100vh - 88px); overflow: hidden; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+.flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 50%, #FFF4DA, var(--metal) 40%, transparent 75%); z-index: 5; }
+
+.intro { position: absolute; z-index: 10; left: 16px; right: 16px; top: 8px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; transition: opacity 0.5s, transform 0.5s; }
+@media (min-width: 900px) { .intro { left: 36px; top: 24px; max-width: 360px; } }
+.intro h1 { font-size: clamp(34px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.035em; text-wrap: balance; }
+.intro h1 em { font-style: normal; color: var(--metal); }
+.intro p { color: var(--muted); font-size: 17px; max-width: 26em; line-height: 1.45; }
+.is-entering .intro, .is-mind .intro { opacity: 0; transform: translateY(-12px); }
+
+.enter-wrap { position: absolute; z-index: 10; left: 0; right: 0; bottom: 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-inline: 16px; }
+.enter { min-height: 50px; padding: 0 26px; border-radius: 999px; border: 1px solid var(--metal); background: rgba(21, 14, 29, 0.55); backdrop-filter: blur(6px); font-weight: 600; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: background 0.2s, color 0.2s; }
+.enter:hover { background: var(--metal); color: #1A1208; }
+.enter .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--metal); animation: beat 1.6s ease-in-out infinite; }
+.enter:hover .dot { background: #1A1208; }
+@keyframes beat { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.8); opacity: 0.4; } }
+.metal { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 999px; }
+.metal button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); cursor: pointer; }
+.metal button[aria-pressed="true"] { background: var(--metal); color: #1A1208; }
+.metal-hint { font-family: var(--f-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+
+.mind-ui { position: absolute; z-index: 12; left: 16px; right: 16px; top: 8px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; pointer-events: none; }
+@media (min-width: 900px) { .mind-ui { left: 36px; right: 36px; top: 24px; } }
+.mind-ui > * { pointer-events: auto; }
+.mind-ui h2 { font-size: clamp(26px, 3.6vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin-top: 6px; }
+.mind-ui p.sub { color: var(--muted); margin-top: 6px; }
+.leave { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line); background: rgba(21, 14, 29, 0.6); cursor: pointer; font-weight: 600; }
+.leave:hover { border-color: var(--metal); }
+
+.labels { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
+.node-label { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 12px; min-height: 44px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; text-align: center; white-space: nowrap; transition: background 0.2s; }
+.is-mind .node-label { pointer-events: auto; }
+.node-label:hover { background: rgba(244, 238, 230, 0.08); }
+.nl-title { font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+.nl-kind { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--metal); }
+.node-label.is-center .nl-title { font-size: 18px; }
+
+.panel { position: absolute; z-index: 15; right: 16px; left: 16px; bottom: 16px; max-height: 70%; overflow: auto; background: var(--panel); backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 18px; padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45); }
+@media (min-width: 900px) { .panel { left: auto; right: 36px; top: 50%; bottom: auto; transform: translateY(-50%); width: 380px; } }
+.panel h3 { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; padding-right: 36px; }
+.panel .eyebrow { color: var(--metal); }
+.panel-q { font-size: 18px; line-height: 1.35; font-weight: 500; }
+.panel-desc { color: var(--muted); line-height: 1.55; }
+.panel-stack { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.panel-links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.pl { min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); text-decoration: none; font-weight: 600; font-size: 15px; }
+.pl:hover { border-color: var(--metal); }
+.pl.primary { background: var(--metal); color: #1A1208; border-color: var(--metal); }
+.panel-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); }
+.panel-close:hover { color: var(--fg); background: rgba(244, 238, 230, 0.08); }
+
+/* düz liste */
+.list { border-top: 1px solid var(--line); padding: 56px 16px 40px; }
+@media (min-width: 760px) { .list { padding: 72px 36px 48px; } }
+.list-inner { max-width: 1100px; margin: 0 auto; }
+.list h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -0.03em; margin-top: 8px; }
+.list ul { list-style: none; padding: 0; margin: 28px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 0 32px; }
+.list li { border-top: 1px solid var(--line); padding: 18px 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.list li .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.list li h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.list li .st { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--metal); white-space: nowrap; }
+.list li p { color: var(--muted); line-height: 1.5; }
+.list li a { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; font-weight: 600; text-underline-offset: 4px; }
+.foot { max-width: 1100px; margin: 48px auto 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+
+.no-gl #gl, .no-gl .enter-wrap, .no-gl .labels, .no-gl .flash { display: none; }
+.no-gl .stage { height: auto; min-height: 0; padding-bottom: 24px; }
+.no-gl .intro { position: static; padding: 24px 16px 0; }
+
+.toast { position: fixed; z-index: 60; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 300px; background: var(--metal); color: #1A1208; padding: 14px 16px; border-radius: 12px; font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .enter .dot { animation: none; } .intro { transition: none; } }
+</style>
+
+<div id="app" data-base="">
+  <header class="bar">
+    <a class="name" href="/">Sinan Kurt<span>.</span></a>
+    <nav aria-label="Bağlantılar">
+      <a href="#liste">Tüm fikirler</a>
+      <a href="/about">Hakkımda</a>
+      <a href="/guestbook">Defter</a>
+      <a href="https://instagram.com/sina.hustle">Instagram ↗</a>
+    </nav>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="gl" aria-hidden="true"></canvas>
+    <div class="flash" id="flash" aria-hidden="true"></div>
+
+    <div class="intro" id="intro">
+      <p class="eyebrow">İstanbul · 2026</p>
+      <h1>Hey, ben Sinan. <em>Fikirlerim burada.</em></h1>
+      <p>Web uygulamaları, oyunlar ve girişimler. Hepsi bu kafanın içinde dönüyor. Beyne tıkla, içeri gir.</p>
+    </div>
+
+    <div class="enter-wrap" id="enterWrap">
+      <button class="enter" id="enter" type="button"><span class="dot" aria-hidden="true"></span>Beynimin içine gir</button>
+      <div class="metal" role="group" aria-label="Beynin rengi">
+        <button type="button" data-metal="gold" aria-pressed="true">Altın</button>
+        <button type="button" data-metal="silver" aria-pressed="false">Gümüş</button>
+      </div>
+    </div>
+
+    <div class="mind-ui" id="mindUi" hidden>
+      <div>
+        <p class="eyebrow">Beynimin içi</p>
+        <h2>Bir fikre dokun.</h2>
+        <p class="sub">Bazıları canlı, bazıları hâlâ pişiyor.</p>
+      </div>
+      <button class="leave" id="leave" type="button">← Dışarı çık</button>
+    </div>
+
+    <div class="labels" id="labels"></div>
+    <aside class="panel" id="panel" hidden aria-live="polite"></aside>
+  </main>
+
+  <section class="list" id="liste" aria-labelledby="liste-baslik">
+    <div class="list-inner">
+      <p class="eyebrow">Beyin yerine düz liste</p>
+      <h2 id="liste-baslik">Tüm fikirler</h2>
+      <ul>
+        <li>
+          <div class="row"><h3>MetrajOS</h3><span class="st">MVP canlı</span></div>
+          <p>İki metraj revizyonunu karşılaştırıp maliyet etkisini gösteren SaaS.</p>
+          <a href="https://metrajos.vercel.app/">Siteyi dene ↗</a>
+        </li>
+        <li>
+          <div class="row"><h3>Mola Oyunları</h3><span class="st">Oynanabilir</span></div>
+          <p>Çay ocağı, dolmuş durağı gibi gündelik sahnelerden kısa tarayıcı oyunları.</p>
+          <a href="https://sinan-kurt.github.io/herdilabs-play/">Hemen oyna ↗</a>
+        </li>
+        <li>
+          <div class="row"><h3>Sevgili Bulmacası</h3><span class="st">Yakında</span></div>
+          <p>Sevdiğin birine mesaj yerine kişisel bir bulmaca gönder.</p>
+          <a href="/projects/sevgili-bulmacasi/">Proje sayfası ↗</a>
+        </li>
+        <li>
+          <div class="row"><h3>Offra Studio</h3><span class="st">Kurucu ortak</span></div>
+          <p>Kimlik tasarımı, yaratıcı strateji ve dijital deneyimler yapan stüdyo.</p>
+          <a href="/projects/offra-studio/">Proje sayfası ↗</a>
+        </li>
+      </ul>
+      <footer class="foot">
+        <span>© 2026 Sinan Kurt</span>
+        <span>merakla yapıldı ✳</span>
+      </footer>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="secret" role="status" aria-live="polite" hidden>Gizli kelimeyi buldun ✳ Defterime bir not bırakmayı unutma.</div>
+
+<script>
+import '../../scripts/brain.js';
+</script>
+</body>
+</html>

@@ -24,6 +24,22 @@ Yerel adres: http://localhost:4321
 
 `src/content/projects/` içine yeni Markdown kaydı ekle. Frontmatter alanları `src/content.config.ts` içinde tanımlıdır.
 
+## Örnek temalar
+
+Ana sayfadan bağımsız, denenmiş tasarım yönleri. Her biri kendi adresinde çalışır, mevcut sayfaları etkilemez.
+
+### Beyin — `/temalar/beyin`
+
+Ortada kendi etrafında dönen altın (ya da gümüş) 3D bir beyin. Beyne tıklayınca kamera içeri dalar, projeler ve girişimler birbirine bağlı parlayan nöronlar olarak açılır; bir nörona dokununca detay kartı çıkar.
+
+- Sayfa: `src/pages/temalar/beyin.astro`
+- 3D sahne ve etkileşim: `src/scripts/brain.js` (three.js). Beyin model dosyası kullanılmaz, kodla üretilir.
+- Fikir eklemek/düzenlemek: `brain.js` başındaki `IDEAS` listesine kayıt ekle, bağlantıları `LINKS` ile belirle.
+- Paylaşım görseli: `public/temalar/beyin-og.png`
+- WebGL olmayan cihazlarda sayfanın altındaki düz liste görünür.
+
+Ana sayfa yapmak için `src/pages/temalar/beyin.astro` içeriğini `src/pages/index.astro`'ya taşı ve script yolunu `../scripts/brain.js` yap.
+
 ## Ziyaretçi defteri
 
 1. Supabase SQL Editor'de `supabase.sql` betiğini çalıştır.
