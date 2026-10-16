@@ -32,11 +32,11 @@ const IDEAS = [
     pos: [1.9, 0.95, -0.4],
   },
   {
-    id: 'sevgili', title: 'Sevgili Bulmacası', kind: 'Deney · Etkileşimli', status: 'Yakında',
+    id: 'sevgili', title: 'Sevgili Bulmacası', kind: 'Deney · Etkileşimli', status: 'Canlı', live: true,
     q: 'Sevdiğin birine mesaj yerine bulmaca göndersen?',
-    desc: 'Bulmacayı sen kuruyorsun, linki gönderiyorsun. Karşı taraf çözdükçe mesajın ortaya çıkıyor. Oynanabilir MVP hazır.',
+    desc: 'Bulmacayı sen kuruyorsun, linki gönderiyorsun. Karşı taraf çözdüğü anda senin mesajın açılıyor.',
     stack: 'Next.js · TypeScript · Supabase',
-    links: [['Proje sayfası', BASE + '/projects/sevgili-bulmacasi/']],
+    links: [['Bir bulmaca hazırla', 'https://sevgili.netlify.app/'], ['Proje sayfası', BASE + '/projects/sevgili-bulmacasi/']],
     pos: [1.55, -1.05, 0.65],
   },
   {

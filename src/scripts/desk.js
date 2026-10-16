@@ -17,11 +17,11 @@ export const ITEMS = {
     links: [['Instagram', IG], ['GitHub', 'https://github.com/sinan-kurt'], ['Hakkımda', BASE + '/about']],
   },
   envelope: {
-    object: 'Zarf', file: 'zarf.dat', title: 'Sevgili Bulmacası', kind: 'Deney · Etkileşimli', status: 'Yakında',
+    object: 'Zarf', file: 'zarf.dat', title: 'Sevgili Bulmacası', kind: 'Deney · Etkileşimli', status: 'Canlı',
     q: 'Sevdiğin birine mesaj yerine bulmaca göndersen?',
-    desc: 'Bulmacayı sen kuruyorsun, sistem ona göre bir ızgara hazırlıyor, sen de linki gönderiyorsun. Karşı taraf çözdükçe mesajın ortaya çıkıyor. Oynanabilir MVP hazır, son kontrollerden sonra yayında.',
+    desc: 'İpucu olarak bir anı, cevap olarak bir kelime yazıyorsun; ızgara kendiliğinden kuruluyor. Linki gönderiyorsun, o telefonda çözüyor ve son harfi yazdığı anda senin mesajın açılıyor.',
     stack: 'Next.js · TypeScript · Supabase',
-    links: [['Proje sayfası', BASE + '/projects/sevgili-bulmacasi/'], ['Açılınca haber al', IG]],
+    links: [['Bir bulmaca hazırla', 'https://sevgili.netlify.app/'], ['Örneği çöz', 'https://sevgili.netlify.app/#dene'], ['Proje sayfası', BASE + '/projects/sevgili-bulmacasi/']],
   },
   tea: {
     object: 'Çay bardağı', file: 'mola.exe', title: 'Mola Oyunları', kind: 'Oyun · Tarayıcı', status: 'Oynanabilir',
