@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /* ================================================================== */
 /*  İçerik: masadaki her nesne bir projeyi temsil eder                  */
@@ -77,6 +78,43 @@ function canvasTex(w, h, draw, srgb = true) {
 }
 const std = (color, rough = 0.6, metal = 0, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, ...extra });
 function shadowAll(obj) { obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return obj; }
+
+/* ---- malzeme detayları: yüzey pürüzü ve temas gölgesi ---- */
+let _grain = null;
+function grainTex() {
+  // ince, düzensiz yüzey pürüzü (bumpMap): plastiği oyuncak gibi pürüzsüz olmaktan çıkarır
+  if (_grain) return _grain;
+  _grain = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#808080'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9000; i++) { const v = Math.floor(rand(90, 170)); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(Math.random() * w, Math.random() * h, rand(1, 2.5), rand(1, 2.5)); }
+  }, false);
+  _grain.wrapS = _grain.wrapT = THREE.RepeatWrapping;
+  return _grain;
+}
+let _leather = null;
+function leatherTex() {
+  // fotoğraf makinesi tutma yeri: deri benzeri benekli doku
+  if (_leather) return _leather;
+  _leather = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(30,30,30,${rand(0.25, 0.6)})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, rand(1.2, 3.2), 0, Math.PI * 2); g.fill(); }
+  }, false);
+  _leather.wrapS = _leather.wrapT = THREE.RepeatWrapping; _leather.repeat.set(3, 2);
+  return _leather;
+}
+let _blob = null;
+function contactShadow(rx, rz, strength = 0.55) {
+  // nesnenin masaya değdiği yerde yumuşak koyuluk: "masanın üstünde duruyor" hissi
+  if (!_blob) _blob = canvasTex(128, 128, (g, w, h) => {
+    const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(0,0,0,1)'); r.addColorStop(0.45, 'rgba(0,0,0,0.6)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = r; g.fillRect(0, 0, w, h);
+  }, false);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(rx * 2, rz * 2), new THREE.MeshBasicMaterial({ map: _blob, transparent: true, opacity: strength, depthWrite: false, color: 0x000000 }));
+  m.rotation.x = -Math.PI / 2;
+  m.renderOrder = 1;
+  return m;
+}
 
 /* ---------------- Dokular ---------------- */
 function woodTexture() {
@@ -255,14 +293,19 @@ function buildPlant() {
   g.add(pot);
   const soil = new THREE.Mesh(new THREE.CircleGeometry(0.14, 30), std(0x2B1D14, 1));
   soil.rotation.x = -Math.PI / 2; soil.position.y = 0.225; g.add(soil);
-  const leafMat = [std(0x2F6B3F, 0.6), std(0x3E8A4F, 0.6), std(0x24553A, 0.6)];
-  for (let i = 0; i < 9; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), leafMat[i % 3]);
-    const hgt = rand(0.28, 0.5);
-    leaf.scale.set(0.045, hgt, 0.012);
-    const a = (i / 9) * Math.PI * 2 + rand(-0.2, 0.2);
-    leaf.position.set(Math.cos(a) * 0.05, 0.23 + hgt * 0.85, Math.sin(a) * 0.05);
-    leaf.rotation.set(Math.sin(a) * 0.35, -a, Math.cos(a) * -0.35);
+  const leafMat = [std(0x2F6B3F, 0.55), std(0x3E8A4F, 0.5), std(0x24553A, 0.6), std(0x4F9A5A, 0.5), std(0x2A5E3A, 0.65)];
+  // yapraklar düzensiz: farklı boy, genişlik, eğim ve açı; birkaç kısa genç yaprak
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), leafMat[Math.floor(Math.random() * leafMat.length)]);
+    const young = i > 10;
+    const hgt = young ? rand(0.12, 0.2) : rand(0.22, 0.55);
+    leaf.scale.set(rand(0.032, 0.055), hgt, rand(0.009, 0.014));
+    const a = (i / n) * Math.PI * 2 * 1.7 + rand(-0.5, 0.5);
+    const lean = young ? rand(0.05, 0.2) : rand(0.18, 0.62);
+    const off = rand(0.015, 0.07);
+    leaf.position.set(Math.cos(a) * off, 0.23 + hgt * rand(0.7, 0.9), Math.sin(a) * off);
+    leaf.rotation.set(Math.sin(a) * lean, -a + rand(-0.4, 0.4), Math.cos(a) * -lean);
     g.add(leaf);
   }
   return shadowAll(g);
@@ -299,13 +342,26 @@ function buildTea() {
   band.rotation.x = Math.PI / 2; band.position.y = 0.03; g.add(band);
   const prof = [[0, 0.012], [0.05, 0.012], [0.056, 0.02], [0.046, 0.05], [0.036, 0.1], [0.034, 0.12], [0.04, 0.15], [0.055, 0.2], [0.064, 0.24], [0.066, 0.25]];
   const glassPts = prof.map(([x, y]) => new THREE.Vector2(x, y));
-  const glass = new THREE.Mesh(new THREE.LatheGeometry(glassPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.28, side: THREE.DoubleSide, clearcoat: 1 }));
+  // cam: çok şeffaf gövde + parlak ağız ve dip halkası, böylece koyu katı bir nesne gibi okunmaz
+  const glass = new THREE.Mesh(new THREE.LatheGeometry(glassPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 2.2, depthWrite: false }));
   glass.castShadow = false;
+  glass.renderOrder = 3;
   g.add(glass);
+  const rimMat = new THREE.MeshPhysicalMaterial({ color: 0xFFFFFF, roughness: 0.05, transparent: true, opacity: 0.6, clearcoat: 1, envMapIntensity: 2 });
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.0025, 8, 48), rimMat);
+  lip.rotation.x = Math.PI / 2; lip.position.y = 0.25; g.add(lip);
+  const waist = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.003, 8, 40), rimMat);
+  waist.rotation.x = Math.PI / 2; waist.position.y = 0.105; g.add(waist);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.056, 0.012, 40), new THREE.MeshPhysicalMaterial({ color: 0xF4F8FF, roughness: 0.05, transparent: true, opacity: 0.45, clearcoat: 1 }));
+  foot.position.y = 0.018; g.add(foot);
   const teaPts = prof.filter(([, y]) => y <= 0.21).map(([x, y]) => new THREE.Vector2(Math.max(0, x - 0.004), y + 0.004));
   teaPts.push(new THREE.Vector2(0.058, 0.214), new THREE.Vector2(0, 0.214));
-  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), new THREE.MeshPhysicalMaterial({ color: 0x9A240E, roughness: 0.15, transparent: true, opacity: 0.93, clearcoat: 1 }));
+  // çay: tavşan kanı; ışığı içinden geçiriyormuş gibi hafif kendi rengiyle parlar
+  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xC4441A, roughness: 0.1, transparent: true, opacity: 0.8, clearcoat: 1, emissive: 0x7A1C06, emissiveIntensity: 0.45 }));
+  tea.renderOrder = 2;
   g.add(tea);
+  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.057, 40), new THREE.MeshPhysicalMaterial({ color: 0xE0742E, roughness: 0.05, transparent: true, opacity: 0.85, clearcoat: 1, emissive: 0x8A2A08, emissiveIntensity: 0.4 }));
+  surface.rotation.x = -Math.PI / 2; surface.position.y = 0.2185; g.add(surface);
   // kaşık
   const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.17, 8), std(0xCFCFD2, 0.25, 1));
   spoon.rotation.z = Math.PI / 2; spoon.rotation.y = 0.5; spoon.position.set(0.04, 0.035, 0.1); g.add(spoon);
@@ -325,13 +381,24 @@ function buildHat() {
     const end = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.625, 20), paper);
     end.rotation.copy(roll.rotation); end.position.copy(roll.position); g.add(end);
   }
-  const yellow = std(0xF0B323, 0.4);
+  // baret: hafif pürüzlü yarı mat plastik; kalıp kaburgaları ve kalın, kıvrık siperlik kenarı
+  const yellow = std(0xEFB020, 0.5, 0, { bumpMap: grainTex(), bumpScale: 0.6 });
   const shell = new THREE.Mesh(new THREE.SphereGeometry(0.17, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), yellow);
   shell.scale.set(1, 0.9, 1.12); shell.position.set(0, 0.09, 0.05); g.add(shell);
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.014, 48), yellow);
   brim.scale.set(1, 1, 1.22); brim.position.set(0, 0.092, 0.08); g.add(brim);
+  const brimEdge = new THREE.Mesh(new THREE.TorusGeometry(0.205, 0.009, 10, 64), std(0xD99A16, 0.55));
+  brimEdge.rotation.x = Math.PI / 2; brimEdge.scale.set(1, 1.22, 1); brimEdge.position.set(0, 0.092, 0.08); g.add(brimEdge);
   const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.168, 0.012, 10, 40, Math.PI), yellow);
   ridge.rotation.y = Math.PI / 2; ridge.scale.set(1, 0.9, 1.12); ridge.position.set(0, 0.09, 0.05); g.add(ridge);
+  const ribMat = std(0xDDA21C, 0.55);
+  [-0.42, 0.42].forEach((t) => {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.005, 8, 40, Math.PI), ribMat);
+    rib.rotation.set(0, Math.PI / 2, t); rib.scale.set(1, 0.9, 1.12); rib.position.set(0, 0.09, 0.05); g.add(rib);
+  });
+  // iç kayış (siperliğin altında görünen koyu bant)
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.008, 6, 40), std(0x2B2B2B, 0.8));
+  band.rotation.x = Math.PI / 2; band.scale.set(1, 1.12, 1); band.position.set(0, 0.1, 0.05); g.add(band);
   const sticker = new THREE.Mesh(new THREE.CircleGeometry(0.035, 20), std(0x1C3F7A, 0.6));
   sticker.position.set(0, 0.17, 0.215); sticker.rotation.x = -0.55; g.add(sticker);
   g.rotation.y = -0.35;
@@ -340,10 +407,17 @@ function buildHat() {
 
 function buildCamera() {
   const g = new THREE.Group();
-  const black = std(0x1B1B1E, 0.55);
-  const silver = std(0xC9CBCF, 0.3, 0.9);
+  // fotoğraf makinesi: parlak siyah plastik, deri tutma yeri, kenarları yakalayan metal
+  const black = std(0x26262B, 0.38, 0.1);
+  const silver = std(0xD4D6DA, 0.22, 1);
+  const leather = std(0x1A1A1C, 0.85, 0, { bumpMap: leatherTex(), bumpScale: 1.2 });
   const body = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.2, 0.12, 4, 0.025), black);
   body.position.y = 0.1; g.add(body);
+  const grip = new THREE.Mesh(new RoundedBoxGeometry(0.345, 0.12, 0.125, 3, 0.02), leather);
+  grip.position.y = 0.09; g.add(grip);
+  // gövde kenarında ince metal şerit: karanlıkta silüeti okutur
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(0.344, 0.006, 0.124), silver);
+  trim.position.y = 0.153; g.add(trim);
   const top = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.05, 0.11, 3, 0.015), silver);
   top.position.y = 0.215; g.add(top);
   const prism = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.06, 0.09, 3, 0.015), silver);
@@ -355,7 +429,14 @@ function buildCamera() {
   const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111827, roughness: 0.05, metalness: 0.2, clearcoat: 1, emissive: 0x2A1650, emissiveIntensity: 0.4 });
   const glass = new THREE.Mesh(new THREE.CircleGeometry(0.055, 40), glassMat);
   glass.position.set(0, 0.1, 0.171); g.add(glass);
-  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.02, 16), std(0xC2271F, 0.4));
+  // lens halkaları: odak ve diyafram halkası, tırtıklı görünüm için koyu/açık sıra
+  [[0.072, 0.12, silver], [0.077, 0.105, black], [0.077, 0.075, silver], [0.071, 0.17, silver]].forEach(([r, z, mat]) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0045, 8, 48), mat);
+    ring.position.set(0, 0.1, z); g.add(ring);
+  });
+  const reflect = new THREE.Mesh(new THREE.CircleGeometry(0.014, 16), new THREE.MeshBasicMaterial({ color: 0xBFD4FF, transparent: true, opacity: 0.55 }));
+  reflect.position.set(-0.02, 0.122, 0.173); g.add(reflect);
+  const btn =new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.02, 16), std(0xC2271F, 0.4));
   btn.position.set(0.12, 0.25, 0); g.add(btn);
   const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.025, 24), silver);
   dial.position.set(-0.11, 0.25, 0); g.add(dial);
@@ -367,22 +448,42 @@ function buildJar() {
   // Bir Şey: içinde katlanmış anı kağıtları ve küçük ışıklar olan cam kavanoz
   const g = new THREE.Group();
   const prof = [[0, 0], [0.07, 0], [0.078, 0.012], [0.08, 0.04], [0.08, 0.17], [0.072, 0.19], [0.058, 0.2], [0.058, 0.215]].map(([x, y]) => new THREE.Vector2(x, y));
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xEAF4EE, roughness: 0.05, transparent: true, opacity: 0.26, side: THREE.DoubleSide, clearcoat: 1, emissive: 0xFFC9A0, emissiveIntensity: 0.03 });
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xEAF4EE, roughness: 0.03, transparent: true, opacity: 0.16, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 2.2, depthWrite: false, emissive: 0xFFC9A0, emissiveIntensity: 0.03 });
   const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 44), glassMat);
   glass.castShadow = false;
+  glass.renderOrder = 3;
   g.add(glass);
+  // cam kenarları: dip, omuz ve ağızda parlak halkalar, küçük ölçekte bile "cam kavanoz" okunur
+  const edge = new THREE.MeshPhysicalMaterial({ color: 0xFFFFFF, roughness: 0.05, transparent: true, opacity: 0.55, clearcoat: 1, envMapIntensity: 2 });
+  [[0.076, 0.008], [0.079, 0.17], [0.06, 0.212]].forEach(([r, y]) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.003, 8, 44), edge);
+    ring.rotation.x = Math.PI / 2; ring.position.y = y; g.add(ring);
+  });
+  const shine = new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.12), new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.35, depthWrite: false }));
+  shine.position.set(-0.05, 0.1, 0.062); shine.rotation.y = -0.6; g.add(shine);
   const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.064, 0.03, 36), std(0xB07A4A, 0.7));
   lid.position.y = 0.228; g.add(lid);
   const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.061, 0.005, 8, 36), std(0xC9485B, 0.5));
   ribbon.rotation.x = Math.PI / 2; ribbon.position.y = 0.205; g.add(ribbon);
   const paperCols = [0xF7D6DD, 0xFBEFD5, 0xD9ECDF, 0xDCE3F5, 0xF6E1C8, 0xEBD7F2, 0xFCE9A9];
-  for (let i = 0; i < 9; i++) {
-    const note = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.012, 0.024), std(paperCols[i % paperCols.length], 0.85));
-    const a = i * 2.3, r = 0.022 + (i % 3) * 0.014;
-    note.position.set(Math.cos(a) * r, 0.016 + i * 0.011, Math.sin(a) * r);
-    note.rotation.set(rand(-0.6, 0.6), a, rand(-0.5, 0.5));
+  // daha az ama daha büyük, parlak anı kağıtları; ikisi rulo, biri cama yaslanmış kalp
+  for (let i = 0; i < 6; i++) {
+    const note = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.014, 0.034), std(paperCols[i % paperCols.length], 0.8, 0, { emissive: paperCols[i % paperCols.length], emissiveIntensity: 0.12 }));
+    const a = i * 2.4, r = 0.018 + (i % 3) * 0.014;
+    note.position.set(Math.cos(a) * r, 0.018 + i * 0.016, Math.sin(a) * r);
+    note.rotation.set(rand(-0.7, 0.7), a, rand(-0.6, 0.6));
     g.add(note);
   }
+  [[0xFBEFD5, -0.025, 0.11, 0.6], [0xF7D6DD, 0.022, 0.12, -0.5]].forEach(([c, x, y, rz]) => {
+    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.06, 14), std(c, 0.8, 0, { emissive: c, emissiveIntensity: 0.12 }));
+    roll.position.set(x, y, 0.01); roll.rotation.set(0.3, 0, rz); g.add(roll);
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.0095, 0.0018, 6, 16), std(0xC9485B, 0.5));
+    tie.position.copy(roll.position); tie.rotation.set(Math.PI / 2 + 0.3, 0, rz); g.add(tie);
+  });
+  const hs = new THREE.Shape();
+  hs.moveTo(0, -0.018); hs.bezierCurveTo(-0.04, 0.01, -0.016, 0.036, 0, 0.016); hs.bezierCurveTo(0.016, 0.036, 0.04, 0.01, 0, -0.018);
+  const heart = new THREE.Mesh(new THREE.ExtrudeGeometry(hs, { depth: 0.004, bevelEnabled: false }), std(0xE8536A, 0.6, 0, { emissive: 0xE8536A, emissiveIntensity: 0.2 }));
+  heart.position.set(0.012, 0.075, 0.05); heart.rotation.set(-0.15, 0.1, 0.12); g.add(heart);
   const spark = new THREE.MeshBasicMaterial({ color: 0xFFD79A, transparent: true, opacity: 0.35 });
   for (let i = 0; i < 5; i++) {
     const s = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 6), spark);
@@ -393,6 +494,24 @@ function buildJar() {
   glow.position.set(0, 0.12, 0); g.add(glow);
   g.userData = { glassMat, glow, spark };
   return shadowAll(g);
+}
+
+function buildPencil() {
+  // kullanım izi: ucu biraz körelmiş, silgisi aşınmış bir kurşun kalem
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.24, 6), std(0xE9B52C, 0.5));
+  g.add(body);
+  const wood = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.026, 6), std(0xD9B285, 0.8));
+  wood.position.y = 0.133; g.add(wood);
+  const lead = new THREE.Mesh(new THREE.ConeGeometry(0.0032, 0.009, 8), std(0x2B2B2E, 0.4, 0.3));
+  lead.position.y = 0.149; g.add(lead);
+  const ferrule = new THREE.Mesh(new THREE.CylinderGeometry(0.0095, 0.0095, 0.016, 12), std(0xBDBFC3, 0.3, 1));
+  ferrule.position.y = -0.128; g.add(ferrule);
+  const eraser = new THREE.Mesh(new THREE.CylinderGeometry(0.0088, 0.009, 0.012, 12), std(0xE58C93, 0.9));
+  eraser.position.y = -0.142; eraser.rotation.z = 0.06; g.add(eraser);
+  g.rotation.z = Math.PI / 2; g.position.y = 0.009;
+  const wrap = new THREE.Group(); wrap.add(g);
+  return shadowAll(wrap);
 }
 
 function buildBulb() {
@@ -554,7 +673,45 @@ function start() {
   const hat = buildHat(); hat.position.set(-0.78, 0, -0.18); scene.add(hat);
   const cam = buildCamera(); cam.position.set(0.98, 0, -0.12); scene.add(cam);
   const bulb = buildBulb(); bulb.position.set(-0.46, 0, 0.5); bulb.rotation.y = 0.5; scene.add(bulb);
-  const jar = buildJar(); jar.position.set(0.66, 0, 0.02); scene.add(jar);
+  const jar = buildJar(); jar.position.set(0.66, 0, 0.02); jar.scale.setScalar(1.15); scene.add(jar);
+
+  /* ---- malzemeler: cam, metal ve parlak plastik yansıtacak bir ortam ---- */
+  // Yalnızca nesnelere uygulanır: duvar, masa ve monitör gece atmosferini korur.
+  // Amaç aydınlatmak değil, cam/metal/plastiği birbirinden ayırmak.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  const applyEnv = (obj, k) => obj.traverse((o) => {
+    if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+    o.material.envMap = envTex;
+    o.material.envMapIntensity = (o.material.envMapIntensity || 1) * k;
+    o.material.needsUpdate = true;
+  });
+
+  /* ---- temas gölgeleri: nesneler masaya gerçekten değsin ---- */
+  [[monitor, 0.42, 0.34, 0.6], [keyboard, 0.46, 0.17, 0.45], [lamp, 0.19, 0.19, 0.6], [plant, 0.17, 0.17, 0.55],
+   [envelope, 0.27, 0.2, 0.35], [tea, 0.19, 0.19, 0.5], [hat, 0.3, 0.27, 0.55], [cam, 0.23, 0.15, 0.6],
+   [bulb, 0.13, 0.09, 0.45], [jar, 0.11, 0.11, 0.55]].forEach(([obj, rx, rz, s]) => {
+    const sh = contactShadow(rx, rz, s);
+    sh.position.set(obj.position.x, 0.002, obj.position.z);
+    sh.rotation.z = obj.rotation.y;
+    scene.add(sh);
+  });
+
+  /* ---- kullanım izleri ---- */
+  // klavyenin önünde eski bir çay bardağı izi
+  const stain = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.16), new THREE.MeshBasicMaterial({
+    map: canvasTex(128, 128, (g2) => {
+      g2.strokeStyle = 'rgba(70,32,12,0.55)'; g2.lineWidth = 5;
+      g2.beginPath(); g2.arc(64, 64, 46, 0.3, Math.PI * 1.85); g2.stroke();
+      g2.strokeStyle = 'rgba(70,32,12,0.25)'; g2.lineWidth = 2;
+      g2.beginPath(); g2.arc(66, 62, 42, 0, Math.PI * 2); g2.stroke();
+    }), transparent: true, depthWrite: false,
+  }));
+  stain.rotation.x = -Math.PI / 2; stain.position.set(-0.18, 0.003, 0.64); scene.add(stain);
+  const pencil = buildPencil(); pencil.position.set(-0.5, 0, 0.2); pencil.rotation.y = 0.9; scene.add(pencil);
+
+  [[tea, 0.5], [jar, 0.5], [cam, 0.45], [hat, 0.3], [lamp, 0.4], [bulb, 0.4], [pencil, 0.3], [keyboard, 0.15], [plant, 0.2]].forEach(([o, k]) => applyEnv(o, k));
 
   monitor.userData.screen.getWorldPosition(screenGlow.position);
   screenGlow.position.z += 0.25;
