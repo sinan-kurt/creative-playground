@@ -267,6 +267,11 @@ function buildLamp() {
   const head = new THREE.Group(); head.position.set(0.52, 0.8, 0.06); g.add(head);
   const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.14, 0.17, 40, 1, true), std(0x2C6B50, 0.35, 0.5, { side: THREE.DoubleSide }));
   shade.rotation.z = 0.55; head.add(shade);
+  // başlık kenarları: ince sac yerine kıvrılmış, yumuşak bir dudak
+  const shadeLip = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.007, 10, 48), std(0x2C6B50, 0.3, 0.55));
+  shadeLip.rotation.x = Math.PI / 2; shadeLip.position.y = -0.085; shade.add(shadeLip);
+  const shadeTop = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.006, 8, 32), std(0x2C6B50, 0.3, 0.55));
+  shadeTop.rotation.x = Math.PI / 2; shadeTop.position.y = 0.085; shade.add(shadeTop);
   const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.135, 0.16, 40, 1, true), new THREE.MeshBasicMaterial({ color: 0xFFE2AE, side: THREE.BackSide }));
   inner.rotation.z = 0.55; head.add(inner);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 20, 14), new THREE.MeshBasicMaterial({ color: 0xFFF1D0 }));
@@ -276,7 +281,8 @@ function buildLamp() {
   light.castShadow = true;
   light.shadow.mapSize.set(1024, 1024);
   light.shadow.bias = -0.0008;
-  light.shadow.radius = 4;
+  light.shadow.radius = 7; // PCF + radius: nesnenin dibinde koyu, uzaklaştıkça yumuşayan gölge kenarı
+  light.shadow.blurSamples = 12;
   g.add(light);
   g.add(light.target);
   const wash = new THREE.PointLight(0xFFB677, 0.9, 3.2, 1.6);
@@ -294,19 +300,37 @@ function buildPlant() {
   const soil = new THREE.Mesh(new THREE.CircleGeometry(0.14, 30), std(0x2B1D14, 1));
   soil.rotation.x = -Math.PI / 2; soil.position.y = 0.225; g.add(soil);
   const leafMat = [std(0x2F6B3F, 0.55), std(0x3E8A4F, 0.5), std(0x24553A, 0.6), std(0x4F9A5A, 0.5), std(0x2A5E3A, 0.65)];
-  // yapraklar düzensiz: farklı boy, genişlik, eğim ve açı; birkaç kısa genç yaprak
-  const n = 14;
+  leafMat.forEach((m) => { m.side = THREE.DoubleSide; });
+  // yaprak geometrisi: tabanda dar, ortada geniş, uca doğru sivrilen; boyunca dışa kavisli, ortası hafif katlı (V kanal)
+  function leafGeo(bend, fold, tipCurl) {
+    const geo = new THREE.PlaneGeometry(1, 1, 4, 14);
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), v = p.getY(i) + 0.5; // v: 0 taban → 1 uç
+      const taper = Math.pow(Math.sin(Math.PI * Math.min(1, v * 0.92 + 0.04)), 0.75) * (1 - v * 0.25);
+      const nx = x * taper;
+      const z = bend * v * v + fold * Math.abs(nx) + tipCurl * Math.pow(v, 6);
+      p.setXYZ(i, nx, v, z);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
+  // düzensiz bir tutam: farklı boy, genişlik, eğim, kavis ve yönler; birkaç kısa genç yaprak ortada
+  const n = 13;
   for (let i = 0; i < n; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), leafMat[Math.floor(Math.random() * leafMat.length)]);
-    const young = i > 10;
-    const hgt = young ? rand(0.12, 0.2) : rand(0.22, 0.55);
-    leaf.scale.set(rand(0.032, 0.055), hgt, rand(0.009, 0.014));
-    const a = (i / n) * Math.PI * 2 * 1.7 + rand(-0.5, 0.5);
-    const lean = young ? rand(0.05, 0.2) : rand(0.18, 0.62);
-    const off = rand(0.015, 0.07);
-    leaf.position.set(Math.cos(a) * off, 0.23 + hgt * rand(0.7, 0.9), Math.sin(a) * off);
-    leaf.rotation.set(Math.sin(a) * lean, -a + rand(-0.4, 0.4), Math.cos(a) * -lean);
-    g.add(leaf);
+    const young = i >= 10;
+    const hgt = young ? rand(0.2, 0.3) : rand(0.42, 0.68);
+    const wid = young ? rand(0.035, 0.05) : rand(0.05, 0.08);
+    const leaf = new THREE.Mesh(leafGeo(rand(0.08, 0.26), rand(0.18, 0.4), rand(0, 0.06)), leafMat[Math.floor(Math.random() * leafMat.length)]);
+    leaf.scale.set(wid, hgt, hgt);
+    const pivot = new THREE.Group();
+    pivot.rotation.y = (i / n) * Math.PI * 2 * 1.618 + rand(-0.35, 0.35);
+    const off = young ? rand(0.005, 0.02) : rand(0.02, 0.06);
+    pivot.position.set(0, 0.215, 0);
+    leaf.position.set(0, 0, off);
+    leaf.rotation.set(young ? rand(0.03, 0.15) : rand(0.1, 0.42), 0, rand(-0.15, 0.15)); // dışa doğru eğim + hafif burulma
+    pivot.add(leaf);
+    g.add(pivot);
   }
   return shadowAll(g);
 }
@@ -357,11 +381,15 @@ function buildTea() {
   const teaPts = prof.filter(([, y]) => y <= 0.21).map(([x, y]) => new THREE.Vector2(Math.max(0, x - 0.004), y + 0.004));
   teaPts.push(new THREE.Vector2(0.058, 0.214), new THREE.Vector2(0, 0.214));
   // çay: tavşan kanı; ışığı içinden geçiriyormuş gibi hafif kendi rengiyle parlar
-  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xC4441A, roughness: 0.1, transparent: true, opacity: 0.8, clearcoat: 1, emissive: 0x7A1C06, emissiveIntensity: 0.45 }));
+  // koyu kızıl-kehribar: gövde koyu, ışık yalnızca kenarlarda ve yüzeyde parlıyor (sütlü kahve gibi açık değil)
+  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), new THREE.MeshPhysicalMaterial({ color: 0x6E1A06, roughness: 0.08, transparent: true, opacity: 0.9, clearcoat: 1, emissive: 0x4A1003, emissiveIntensity: 0.6, sheen: 1, sheenColor: 0xD2561C, sheenRoughness: 0.3 }));
   tea.renderOrder = 2;
   g.add(tea);
-  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.057, 40), new THREE.MeshPhysicalMaterial({ color: 0xE0742E, roughness: 0.05, transparent: true, opacity: 0.85, clearcoat: 1, emissive: 0x8A2A08, emissiveIntensity: 0.4 }));
+  // sıvı seviyesi: koyu yüzey + açık kehribar menisküs halkası, çizgi gibi net okunur
+  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.057, 40), new THREE.MeshPhysicalMaterial({ color: 0x5A1405, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0.02, emissive: 0x3A0C02, emissiveIntensity: 0.5, envMapIntensity: 2.5 }));
   surface.rotation.x = -Math.PI / 2; surface.position.y = 0.2185; g.add(surface);
+  const meniscus = new THREE.Mesh(new THREE.TorusGeometry(0.0575, 0.0022, 8, 48), new THREE.MeshBasicMaterial({ color: 0xE88A3A, transparent: true, opacity: 0.85 }));
+  meniscus.rotation.x = Math.PI / 2; meniscus.position.y = 0.2188; g.add(meniscus);
   // kaşık
   const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.17, 8), std(0xCFCFD2, 0.25, 1));
   spoon.rotation.z = Math.PI / 2; spoon.rotation.y = 0.5; spoon.position.set(0.04, 0.035, 0.1); g.add(spoon);
@@ -382,7 +410,7 @@ function buildHat() {
     end.rotation.copy(roll.rotation); end.position.copy(roll.position); g.add(end);
   }
   // baret: hafif pürüzlü yarı mat plastik; kalıp kaburgaları ve kalın, kıvrık siperlik kenarı
-  const yellow = std(0xEFB020, 0.5, 0, { bumpMap: grainTex(), bumpScale: 0.6 });
+  const yellow = std(0xEFB020, 0.5, 0, { bumpMap: grainTex(), bumpScale: 0.18 });
   const shell = new THREE.Mesh(new THREE.SphereGeometry(0.17, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), yellow);
   shell.scale.set(1, 0.9, 1.12); shell.position.set(0, 0.09, 0.05); g.add(shell);
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.21, 0.014, 48), yellow);
@@ -426,16 +454,18 @@ function buildCamera() {
   lens1.rotation.x = Math.PI / 2; lens1.position.set(0, 0.1, 0.09); g.add(lens1);
   const lens2 = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.07, 0.05, 40), silver);
   lens2.rotation.x = Math.PI / 2; lens2.position.set(0, 0.1, 0.145); g.add(lens2);
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111827, roughness: 0.05, metalness: 0.2, clearcoat: 1, emissive: 0x2A1650, emissiveIntensity: 0.4 });
-  const glass = new THREE.Mesh(new THREE.CircleGeometry(0.055, 40), glassMat);
-  glass.position.set(0, 0.1, 0.171); g.add(glass);
+  // lens camı: düz disk yerine hafif bombeli, koyu mavi-yeşil kaplamalı cam; ortam yansımasını yakalar
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0B1420, roughness: 0.02, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 0.6, iridescenceIOR: 1.6, emissive: 0x10203A, emissiveIntensity: 0.25, envMapIntensity: 3 });
+  // büyük bir kürenin tepe kapağı: tabanı lens çapında (~0.057), ~1.5 cm bombe
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.11, 40, 16, 0, Math.PI * 2, 0, 0.52), glassMat);
+  glass.rotation.x = Math.PI / 2; glass.position.set(0, 0.1, 0.168 - 0.11 * Math.cos(0.52)); g.add(glass);
   // lens halkaları: odak ve diyafram halkası, tırtıklı görünüm için koyu/açık sıra
   [[0.072, 0.12, silver], [0.077, 0.105, black], [0.077, 0.075, silver], [0.071, 0.17, silver]].forEach(([r, z, mat]) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0045, 8, 48), mat);
     ring.position.set(0, 0.1, z); g.add(ring);
   });
   const reflect = new THREE.Mesh(new THREE.CircleGeometry(0.014, 16), new THREE.MeshBasicMaterial({ color: 0xBFD4FF, transparent: true, opacity: 0.55 }));
-  reflect.position.set(-0.02, 0.122, 0.173); g.add(reflect);
+  reflect.position.set(-0.018, 0.118, 0.181); reflect.rotation.set(-0.15, -0.15, 0); g.add(reflect);
   const btn =new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.02, 16), std(0xC2271F, 0.4));
   btn.position.set(0.12, 0.25, 0); g.add(btn);
   const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.025, 24), silver);
@@ -551,7 +581,7 @@ function start() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft "radius" değerini yok sayıyor; PCF ile kenar yumuşatılabiliyor
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0C0A12);
