@@ -26,3 +26,21 @@ begin
 end; $$;
 revoke all on function public.guestbook_rate_limit() from public, anon, authenticated;
 create trigger guestbook_rate_limit before insert on public.guestbook_entries for each row execute function public.guestbook_rate_limit();
+
+-- Masa tıklama sayacı (creative-playground projesinde kurulu).
+-- Kişisel veri yok: isim, IP, çerez tutulmaz; yalnızca ne tıklandı ve ne zaman.
+-- event: 'open' = masada obje açıldı (target: envelope, jar, notebook...), 'link' = dış siteye geçildi (target: alan adı)
+create table if not exists public.desk_events (
+  id bigserial primary key,
+  event text not null check (event in ('open', 'link')),
+  target text not null check (char_length(target) between 1 and 80),
+  created_at timestamptz not null default now()
+);
+alter table public.desk_events enable row level security;
+revoke all on public.desk_events from anon, authenticated;
+grant insert (event, target) on public.desk_events to anon;
+grant usage, select on sequence public.desk_events_id_seq to anon;
+create policy "record_event" on public.desk_events for insert to anon with check (true);
+create index if not exists desk_events_created_at_idx on public.desk_events (created_at desc);
+-- (spam freni: 10 dakikada 3000 olay; guestbook_rate_limit ile aynı yapıda desk_events_rate_limit tetikleyicisi)
+-- Örnek rapor: select target, count(*) from desk_events where event='open' and created_at > now() - interval '7 days' group by 1 order by 2 desc;

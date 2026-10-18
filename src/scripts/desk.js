@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { track } from './track.js';
 
 /* ================================================================== */
 /*  İçerik: masadaki her nesne bir projeyi temsil eder                  */
@@ -989,6 +990,8 @@ function start() {
   let hovered = null;
 
   function focusOn(key) {
+    // tıklama sayacı: hangi obje açıldı (aynı objeye tekrar basmak sayılmaz)
+    if (!(state === 'focus' && active === key)) track('open', key);
     if (key === 'lamp') { toggleLamp(); return; }
     // defter monitörde değil, masanın üstünde açık bir defter olarak açılır
     if (key === 'notebook') { hideTip(); window.dispatchEvent(new CustomEvent('open-notebook')); return; }
