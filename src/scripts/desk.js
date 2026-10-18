@@ -27,7 +27,7 @@ export const ITEMS = {
     object: 'Kavanoz', file: 'kavanoz.html', title: 'Bir Şey', kind: 'Deney · Dijital hediye', status: 'Canlı',
     q: '“Seni düşündüm” demenin küçük bir yolu.',
     desc: 'Bir dünya seçiyorsun: anı kavanozu, minik gezegen, müzik kutusu ya da yaşayan kelimeler. İçine bir isim, birkaç anı ve birkaç satır koyuyorsun. Linki ya da kendi başına açılan HTML dosyasını gönderiyorsun; o dokundukça keşfediyor.',
-    stack: 'Web · Etkileşim tasarımı',
+    stack: 'JavaScript · Three.js · Web Audio · Piksel SVG',
     links: [['Bir şey hazırla', 'https://bir-sey.netlify.app/'], ['Proje sayfası', BASE + '/projects/bir-sey/']],
   },
   tea: {
