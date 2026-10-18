@@ -342,7 +342,7 @@ function start() {
     const ls = document.createElement('div'); ls.className = 'panel-links';
     idea.links.forEach(([label, href], i) => {
       const a = document.createElement('a');
-      a.href = href; a.textContent = label + ' ↗'; a.className = i === 0 ? 'pl primary' : 'pl';
+      a.href = href; if (/^https?:\/\//.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; } a.textContent = label + ' ↗'; a.className = i === 0 ? 'pl primary' : 'pl';
       ls.appendChild(a);
     });
     panel.append(close, kind, h, q, d, s, ls);

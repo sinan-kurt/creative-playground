@@ -918,6 +918,8 @@ function start() {
     it.links.forEach(([label, href], i) => {
       const a = mk('a', i === 0 ? 'scr-link primary' : 'scr-link', (i === 0 ? '> ' : '') + label + ' ↗');
       a.href = href;
+      // dış siteler yeni sekmede: masa ve 3D sahne kaybolmasın
+      if (/^https?:\/\//.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
       links.append(a);
     });
     screenBody.append(links, mk('p', 'scr-object', 'masadaki nesne: ' + it.object.toLowerCase()));
