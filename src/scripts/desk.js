@@ -302,15 +302,18 @@ function buildPlant() {
   const leafMat = [std(0x2F6B3F, 0.55), std(0x3E8A4F, 0.5), std(0x24553A, 0.6), std(0x4F9A5A, 0.5), std(0x2A5E3A, 0.65)];
   leafMat.forEach((m) => { m.side = THREE.DoubleSide; });
   // yaprak geometrisi: tabanda dar, ortada geniş, uca doğru sivrilen; boyunca dışa kavisli, ortası hafif katlı (V kanal)
-  function leafGeo(bend, fold, tipCurl) {
+  function leafGeo(bend, fold, tipCurl, twist = 0) {
     const geo = new THREE.PlaneGeometry(1, 1, 4, 14);
     const p = geo.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), v = p.getY(i) + 0.5; // v: 0 taban → 1 uç
       const taper = Math.pow(Math.sin(Math.PI * Math.min(1, v * 0.92 + 0.04)), 0.75) * (1 - v * 0.25);
       const nx = x * taper;
-      const z = bend * v * v + fold * Math.abs(nx) + tipCurl * Math.pow(v, 6);
-      p.setXYZ(i, nx, v, z);
+      // kavis + V katlama + uçta sarkma + kenarda hafif dalga
+      const z = bend * v * v + fold * Math.abs(nx) + tipCurl * Math.pow(v, 4) + Math.sin(v * Math.PI * 3) * 0.02 * Math.abs(nx) * 4;
+      // boyunca burulma: yaprak tabandan uca doğru kendi ekseninde döner
+      const a = twist * v;
+      p.setXYZ(i, nx * Math.cos(a), v, z + nx * Math.sin(a));
     }
     geo.computeVertexNormals();
     return geo;
@@ -321,7 +324,7 @@ function buildPlant() {
     const young = i >= 10;
     const hgt = young ? rand(0.2, 0.3) : rand(0.42, 0.68);
     const wid = young ? rand(0.035, 0.05) : rand(0.05, 0.08);
-    const leaf = new THREE.Mesh(leafGeo(rand(0.08, 0.26), rand(0.18, 0.4), rand(0, 0.06)), leafMat[Math.floor(Math.random() * leafMat.length)]);
+    const leaf = new THREE.Mesh(leafGeo(rand(0.1, 0.3), rand(0.18, 0.4), young ? rand(0, 0.04) : rand(0.06, 0.2), rand(-0.9, 0.9)), leafMat[Math.floor(Math.random() * leafMat.length)]);
     leaf.scale.set(wid, hgt, hgt);
     const pivot = new THREE.Group();
     pivot.rotation.y = (i / n) * Math.PI * 2 * 1.618 + rand(-0.35, 0.35);
@@ -367,7 +370,7 @@ function buildTea() {
   const prof = [[0, 0.012], [0.05, 0.012], [0.056, 0.02], [0.046, 0.05], [0.036, 0.1], [0.034, 0.12], [0.04, 0.15], [0.055, 0.2], [0.064, 0.24], [0.066, 0.25]];
   const glassPts = prof.map(([x, y]) => new THREE.Vector2(x, y));
   // cam: çok şeffaf gövde + parlak ağız ve dip halkası, böylece koyu katı bir nesne gibi okunmaz
-  const glass = new THREE.Mesh(new THREE.LatheGeometry(glassPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 2.2, depthWrite: false }));
+  const glass = new THREE.Mesh(new THREE.LatheGeometry(glassPts, 48), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.1, side: THREE.DoubleSide, clearcoat: 1, envMapIntensity: 1.6, depthWrite: false }));
   glass.castShadow = false;
   glass.renderOrder = 3;
   g.add(glass);
@@ -382,13 +385,25 @@ function buildTea() {
   teaPts.push(new THREE.Vector2(0.058, 0.214), new THREE.Vector2(0, 0.214));
   // çay: tavşan kanı; ışığı içinden geçiriyormuş gibi hafif kendi rengiyle parlar
   // koyu kızıl-kehribar: gövde koyu, ışık yalnızca kenarlarda ve yüzeyde parlıyor (sütlü kahve gibi açık değil)
-  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), new THREE.MeshPhysicalMaterial({ color: 0x6E1A06, roughness: 0.08, transparent: true, opacity: 0.9, clearcoat: 1, emissive: 0x4A1003, emissiveIntensity: 0.6, sheen: 1, sheenColor: 0xD2561C, sheenRoughness: 0.3 }));
+  // Rengi sahne ışığından bağımsız: diffuse çok koyu (mavi gece ışığı onu mora çekemesin),
+  // gövde içten koyu kızıl parlar, bakış açısı sıyırdıkça kenarlar kehribara döner (fresnel).
+  const teaMat = new THREE.MeshPhysicalMaterial({ color: 0x0A0100, roughness: 0.12, transparent: true, opacity: 0.96, clearcoat: 0.6, emissive: 0x640B01, emissiveIntensity: 1 });
+  teaMat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      {
+        // yalnızca en dış kenarda dar bir kehribar şerit
+        float rim = pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 4.0);
+        totalEmissiveRadiance = mix(totalEmissiveRadiance, vec3(0.86, 0.34, 0.05), clamp(rim * 0.9, 0.0, 0.75));
+      }`);
+  };
+  const tea = new THREE.Mesh(new THREE.LatheGeometry(teaPts, 48), teaMat);
   tea.renderOrder = 2;
   g.add(tea);
   // sıvı seviyesi: koyu yüzey + açık kehribar menisküs halkası, çizgi gibi net okunur
-  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.057, 40), new THREE.MeshPhysicalMaterial({ color: 0x5A1405, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0.02, emissive: 0x3A0C02, emissiveIntensity: 0.5, envMapIntensity: 2.5 }));
+  // yüzey koyu kalır: yalnızca hafif bir yansıma, açık renkli bir kapak gibi görünmez
+  const surface = new THREE.Mesh(new THREE.CircleGeometry(0.057, 40), new THREE.MeshPhysicalMaterial({ color: 0x1A0401, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, emissive: 0x3E0B02, emissiveIntensity: 1, envMapIntensity: 0.7 }));
   surface.rotation.x = -Math.PI / 2; surface.position.y = 0.2185; g.add(surface);
-  const meniscus = new THREE.Mesh(new THREE.TorusGeometry(0.0575, 0.0022, 8, 48), new THREE.MeshBasicMaterial({ color: 0xE88A3A, transparent: true, opacity: 0.85 }));
+  const meniscus = new THREE.Mesh(new THREE.TorusGeometry(0.0572, 0.0016, 8, 48), new THREE.MeshBasicMaterial({ color: 0xD9741F, transparent: true, opacity: 0.75 }));
   meniscus.rotation.x = Math.PI / 2; meniscus.position.y = 0.2188; g.add(meniscus);
   // kaşık
   const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.17, 8), std(0xCFCFD2, 0.25, 1));
@@ -593,6 +608,11 @@ function start() {
   const moon = new THREE.DirectionalLight(0x9DB2FF, 0.9);
   moon.position.set(-1.6, 2.4, -2.5);
   scene.add(moon);
+  // sağdan çok hafif sıcak yan ışık: kamera ve bardağın detayları karanlıkta kaybolmasın
+  // (yerel ve gölgesiz; duvarı ve gece havasını etkilemeyecek kadar kısa menzilli)
+  const sideFill = new THREE.PointLight(0xFFCFA0, 1.4, 1.9, 2);
+  sideFill.position.set(1.65, 0.55, 0.7);
+  scene.add(sideFill);
   const screenGlow = new THREE.PointLight(0xFFAE4A, 0.5, 2.2, 2);
   scene.add(screenGlow);
 
