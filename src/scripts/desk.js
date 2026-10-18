@@ -613,6 +613,7 @@ function start() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     narrow = camera.aspect < 0.85;
+    app.classList.toggle('is-narrow', narrow);
     view = state === 'desk' ? homeView() : (homeView(), focusView());
     camera.updateProjectionMatrix();
     if (!tween.active) { camPos.copy(view.pos); camTarget.copy(view.target); }
@@ -637,6 +638,9 @@ function start() {
     if (state === 'focus') { screenEl.classList.remove('on'); setTimeout(() => { screenEl.classList.add('on'); }, 60); return; }
     state = 'focusing';
     app.classList.add('is-focus');
+    // sahne görünür olsun ve sayfa kaymasın: tek kaydırma alanı monitör
+    if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    document.documentElement.classList.add('scroll-lock');
     hint.hidden = true;
     view = focusView();
     goTo(view, 1.15, () => {
@@ -650,6 +654,7 @@ function start() {
   function unfocus() {
     if (state === 'desk' || state === 'leaving') return;
     state = 'leaving';
+    document.documentElement.classList.remove('scroll-lock');
     screenEl.classList.remove('on');
     screenEl.hidden = true;
     screenMode = 'idle'; drawScreen();
@@ -688,7 +693,7 @@ function start() {
     const x1 = (corners[0].x * 0.5 + 0.5) * W, y1 = (-corners[0].y * 0.5 + 0.5) * H;
     const x2 = (corners[1].x * 0.5 + 0.5) * W, y2 = (-corners[1].y * 0.5 + 0.5) * H;
     let left = x1, top = y1, width = x2 - x1, height = y2 - y1;
-    if (narrow) { left = 12; width = W - 24; top = Math.min(top, 64); height = H - top - 12; }
+    if (narrow) { left = 12; width = W - 24; top = 64; height = H - top - 12; } // üstteki 64px "Masaya dön" düğmesine ayrıldı
     screenEl.style.left = left.toFixed(1) + 'px';
     screenEl.style.top = top.toFixed(1) + 'px';
     screenEl.style.width = width.toFixed(1) + 'px';

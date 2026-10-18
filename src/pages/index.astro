@@ -65,9 +65,10 @@ h1, h2, p { margin: 0; }
 .is-focus .bar > * { pointer-events: none; }
 @media (max-width: 520px) { .bar nav { font-size: 13px; gap: 0 12px; } .name span { display: none; } }
 
-.hint { position: absolute; z-index: 15; left: 0; right: 0; bottom: 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-inline: 16px; pointer-events: none; transition: opacity 0.4s; }
+.hint { position: absolute; z-index: 15; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 96px 16px 18px; pointer-events: none; transition: opacity 0.4s; background: linear-gradient(to top, rgba(12, 10, 18, 0.94), rgba(12, 10, 18, 0.86) 62%, transparent); }
 .hint > * { pointer-events: auto; }
 .hint p { font-size: 14px; color: var(--muted); text-align: center; }
+.hint .lede { font-size: clamp(16px, 2.2vw, 19px); font-weight: 600; color: var(--ink); max-width: 30ch; line-height: 1.35; text-wrap: balance; text-shadow: 0 1px 12px rgba(12, 10, 18, 0.9); }
 .hint p b { color: var(--ink); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 760px; }
 .chips button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(12, 10, 18, 0.55); backdrop-filter: blur(6px); font-size: 13px; cursor: pointer; color: var(--ink); }
@@ -84,16 +85,17 @@ h1, h2, p { margin: 0; }
 /* monitör ekranındaki içerik */
 .screen { position: absolute; z-index: 18; overflow: hidden; border-radius: 18px / 22px; background: radial-gradient(120% 120% at 50% 45%, #1E1306, var(--crt) 75%); color: var(--amber); font-family: var(--f-crt); opacity: 0; transition: opacity 0.35s; box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.75), 0 0 40px rgba(255, 170, 60, 0.12); }
 .screen.on { opacity: 1; }
-.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px); border-radius: inherit; }
-.screen-body { position: absolute; inset: 0; overflow: auto; padding: 1.1em 1.4em 1.3em; display: flex; flex-direction: column; gap: 0.55em; text-shadow: 0 0 8px rgba(255, 170, 60, 0.55); scrollbar-color: var(--amber-dim) transparent; }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.14) 0 2px, transparent 2px 4px); border-radius: inherit; }
+.screen-body { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; padding: 1.1em 1.4em 1.3em; display: flex; flex-direction: column; gap: 0.55em; text-shadow: 0 0 8px rgba(255, 170, 60, 0.55); scrollbar-color: var(--amber-dim) transparent; }
 .scr-cmd { opacity: 0.6; font-size: 1em; }
 .scr-kind { font-size: 1em; color: var(--amber-dim); text-transform: uppercase; letter-spacing: 0.06em; }
 .scr-title { font-family: var(--f-crt); font-weight: 400; font-size: 3em; line-height: 0.9; }
-.scr-q { font-size: 1.35em; line-height: 1.1; }
-.scr-desc { font-size: 1.1em; line-height: 1.2; opacity: 0.86; max-width: 46em; }
+/* okunacak metin: atmosfer başlıkta kalır, paragraflar temiz fontla */
+.scr-q { font-family: var(--f-ui); font-weight: 600; font-size: clamp(17px, 0.82em, 22px); line-height: 1.35; color: #FFD39A; text-shadow: none; max-width: 38em; text-wrap: pretty; }
+.scr-desc { font-family: var(--f-ui); font-weight: 400; font-size: clamp(15px, 0.7em, 18px); line-height: 1.6; color: #F1DDBF; text-shadow: none; max-width: 38em; text-wrap: pretty; }
 .scr-stack { font-size: 1em; opacity: 0.6; }
 .scr-links { display: flex; flex-wrap: wrap; gap: 0.5em 1em; margin-top: 0.3em; }
-.scr-link { font-size: 1.25em; min-height: 40px; display: inline-flex; align-items: center; padding: 0 0.5em; border: 1px solid var(--amber-dim); text-decoration: none; }
+.scr-link { font-size: 1.25em; white-space: nowrap; max-width: 100%; min-height: 40px; display: inline-flex; align-items: center; padding: 0 0.5em; border: 1px solid var(--amber-dim); text-decoration: none; }
 .scr-link.primary { background: var(--amber); color: var(--crt); text-shadow: none; border-color: var(--amber); }
 .scr-link:hover { background: rgba(255, 179, 71, 0.15); }
 .scr-link.primary:hover { background: #FFC873; }
@@ -103,6 +105,12 @@ h1, h2, p { margin: 0; }
 .back { position: absolute; z-index: 21; left: 16px; bottom: 16px; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--line); background: rgba(12, 10, 18, 0.7); backdrop-filter: blur(6px); cursor: pointer; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
 @media (min-width: 760px) { .back { left: 28px; bottom: 24px; } }
 .is-focus .back { opacity: 1; pointer-events: auto; }
+/* dar ekran: düğme monitörün üstünde, içerikle çakışmaz */
+.is-narrow .back { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; left: 12px; min-height: 42px; }
+.is-narrow .screen-body { padding-bottom: 1.3em; }
+.is-narrow .scr-link { font-size: 1.1em; }
+/* proje açıkken sayfa kaymaz; tek kaydırma alanı monitör */
+html.scroll-lock, html.scroll-lock body { overflow: hidden; }
 .back:hover { border-color: var(--amber); }
 
 .toast { position: absolute; z-index: 30; left: 50%; top: 76px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: rgba(12, 10, 18, 0.85); border: 1px solid var(--line); font-size: 14px; }
@@ -150,6 +158,7 @@ h1, h2, p { margin: 0; }
     <button class="back" id="back" type="button">← Masaya dön</button>
 
     <div class="hint" id="hint">
+      <p class="lede">İnternette küçük, kullanışlı ya da sadece eğlenceli şeyler yapıyorum.</p>
       <p><b>Masadaki bir şeye dokun.</b> Her nesne bir proje.</p>
       <div class="chips" role="group" aria-label="Masadaki nesneler">
         <button type="button" data-open="envelope">Zarf<span>Sevgili Bulmacası</span></button>
