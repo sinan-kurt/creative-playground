@@ -23,6 +23,13 @@ export const ITEMS = {
     stack: 'Next.js · TypeScript · Supabase',
     links: [['Bir bulmaca hazırla', 'https://sevgili.netlify.app/'], ['Örneği çöz', 'https://sevgili.netlify.app/#dene'], ['Proje sayfası', BASE + '/projects/sevgili-bulmacasi/']],
   },
+  jar: {
+    object: 'Kavanoz', file: 'kavanoz.html', title: 'Bir Şey', kind: 'Deney · Dijital hediye', status: 'Canlı',
+    q: '“Seni düşündüm” demenin küçük bir yolu.',
+    desc: 'Bir dünya seçiyorsun: anı kavanozu, minik gezegen, müzik kutusu ya da yaşayan kelimeler. İçine bir isim, birkaç anı ve birkaç satır koyuyorsun. Linki ya da kendi başına açılan HTML dosyasını gönderiyorsun; o dokundukça keşfediyor.',
+    stack: 'Web · Etkileşim tasarımı',
+    links: [['Bir şey hazırla', 'https://bir-sey.netlify.app/'], ['Proje sayfası', BASE + '/projects/bir-sey/']],
+  },
   tea: {
     object: 'Çay bardağı', file: 'mola.exe', title: 'Mola Oyunları', kind: 'Oyun · Tarayıcı', status: 'Oynanabilir',
     q: 'Çay ocağı ve dolmuş durağı küçük bir oyuna dönüşür mü?',
@@ -356,6 +363,38 @@ function buildCamera() {
   return shadowAll(g);
 }
 
+function buildJar() {
+  // Bir Şey: içinde katlanmış anı kağıtları ve küçük ışıklar olan cam kavanoz
+  const g = new THREE.Group();
+  const prof = [[0, 0], [0.07, 0], [0.078, 0.012], [0.08, 0.04], [0.08, 0.17], [0.072, 0.19], [0.058, 0.2], [0.058, 0.215]].map(([x, y]) => new THREE.Vector2(x, y));
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xEAF4EE, roughness: 0.05, transparent: true, opacity: 0.26, side: THREE.DoubleSide, clearcoat: 1, emissive: 0xFFC9A0, emissiveIntensity: 0.03 });
+  const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 44), glassMat);
+  glass.castShadow = false;
+  g.add(glass);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.064, 0.03, 36), std(0xB07A4A, 0.7));
+  lid.position.y = 0.228; g.add(lid);
+  const ribbon = new THREE.Mesh(new THREE.TorusGeometry(0.061, 0.005, 8, 36), std(0xC9485B, 0.5));
+  ribbon.rotation.x = Math.PI / 2; ribbon.position.y = 0.205; g.add(ribbon);
+  const paperCols = [0xF7D6DD, 0xFBEFD5, 0xD9ECDF, 0xDCE3F5, 0xF6E1C8, 0xEBD7F2, 0xFCE9A9];
+  for (let i = 0; i < 9; i++) {
+    const note = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.012, 0.024), std(paperCols[i % paperCols.length], 0.85));
+    const a = i * 2.3, r = 0.022 + (i % 3) * 0.014;
+    note.position.set(Math.cos(a) * r, 0.016 + i * 0.011, Math.sin(a) * r);
+    note.rotation.set(rand(-0.6, 0.6), a, rand(-0.5, 0.5));
+    g.add(note);
+  }
+  const spark = new THREE.MeshBasicMaterial({ color: 0xFFD79A, transparent: true, opacity: 0.35 });
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 6), spark);
+    s.position.set(rand(-0.04, 0.04), rand(0.12, 0.18), rand(-0.04, 0.04));
+    g.add(s);
+  }
+  const glow = new THREE.PointLight(0xFFC17A, 0, 0.7, 2);
+  glow.position.set(0, 0.12, 0); g.add(glow);
+  g.userData = { glassMat, glow, spark };
+  return shadowAll(g);
+}
+
 function buildBulb() {
   const g = new THREE.Group();
   const prof = [[0, 0], [0.03, 0.005], [0.032, 0.03], [0.034, 0.05], [0.06, 0.085], [0.075, 0.12], [0.072, 0.16], [0.05, 0.19], [0, 0.2]].map(([x, y]) => new THREE.Vector2(x, y));
@@ -488,7 +527,7 @@ function start() {
       sctx.fillText('> masadaki bir şeye dokun' + (cursorOn ? '_' : ''), 70, 600);
       sctx.globalAlpha = 0.55;
       sctx.font = '48px VT323, "IBM Plex Mono", monospace';
-      sctx.fillText('6 dosya · 1 tanesi pişiyor', 70, 680);
+      sctx.fillText('7 dosya · 1 tanesi pişiyor', 70, 680);
       sctx.globalAlpha = 1;
     } else {
       sctx.font = '56px VT323, "IBM Plex Mono", monospace';
@@ -515,11 +554,12 @@ function start() {
   const hat = buildHat(); hat.position.set(-0.78, 0, -0.18); scene.add(hat);
   const cam = buildCamera(); cam.position.set(0.98, 0, -0.12); scene.add(cam);
   const bulb = buildBulb(); bulb.position.set(-0.46, 0, 0.5); bulb.rotation.y = 0.5; scene.add(bulb);
+  const jar = buildJar(); jar.position.set(0.66, 0, 0.02); scene.add(jar);
 
   monitor.userData.screen.getWorldPosition(screenGlow.position);
   screenGlow.position.z += 0.25;
 
-  const clickables = { monitor, envelope, tea, hat, camera: cam, bulb, lamp };
+  const clickables = { monitor, envelope, jar, tea, hat, camera: cam, bulb, lamp };
   Object.entries(clickables).forEach(([key, obj]) => {
     obj.traverse((o) => { o.userData.key = key; });
     obj.userData.key = key;
@@ -829,6 +869,12 @@ function start() {
     const bd = bulb.userData;
     bd.glassMat.emissiveIntensity += ((bulbOn ? 1.6 : 0.05) - bd.glassMat.emissiveIntensity) * Math.min(1, dt * 6);
     bd.glow.intensity += ((bulbOn ? 1.2 : 0) - bd.glow.intensity) * Math.min(1, dt * 6);
+    // kavanoz: üzerine gelince ya da açıkken anılar ışır
+    const jarOn = hovered === 'jar' || active === 'jar';
+    const jd = jar.userData;
+    jd.glassMat.emissiveIntensity += ((jarOn ? 0.45 : 0.03) - jd.glassMat.emissiveIntensity) * Math.min(1, dt * 6);
+    jd.glow.intensity += ((jarOn ? 0.9 : 0) - jd.glow.intensity) * Math.min(1, dt * 6);
+    jd.spark.opacity = (jarOn ? 0.95 : 0.35) + Math.sin(time * 3) * 0.05;
     screenGlow.intensity = 0.45 + Math.sin(time * 9) * 0.03 + (state === 'focus' ? 0.4 : 0);
 
     // kamera
