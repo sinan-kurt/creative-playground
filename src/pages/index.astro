@@ -107,7 +107,8 @@ h1, h2, p { margin: 0; }
 .is-focus .back { opacity: 1; pointer-events: auto; }
 /* dar ekran: düğme monitörün üstünde, içerikle çakışmaz */
 .is-narrow .back { top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; left: 12px; min-height: 42px; }
-.is-narrow .screen-body { padding-bottom: 1.3em; }
+.is-narrow .screen-body { padding-bottom: 1.3em; position: relative; inset: auto; max-height: inherit; }
+.is-narrow .scr-object { margin-top: 0.4em; }
 .is-narrow .scr-link { font-size: 1.1em; }
 /* proje açıkken sayfa kaymaz; tek kaydırma alanı monitör */
 html.scroll-lock, html.scroll-lock body { overflow: hidden; }

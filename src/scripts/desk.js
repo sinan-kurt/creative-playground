@@ -624,7 +624,15 @@ function start() {
 
   function homeView() {
     const a = camera.aspect;
-    if (a < 0.75) { camera.fov = 60; return { pos: new THREE.Vector3(0, 2.45, 3.55), target: new THREE.Vector3(0, 0.12, 0.05) }; }
+    if (a < 0.75) {
+      // dar ekran: kamerayı masanın tamamı yatayda sığacak kadar geri çek (zarf ve çay kenardan kesilmesin)
+      camera.fov = 60;
+      const target = new THREE.Vector3(0, 0.12, 0.05);
+      const dir = new THREE.Vector3(0, 2.33, 3.5).normalize();
+      const halfW = 1.42; // masadaki dış nesnelerin yarı genişliği + pay
+      const dist = THREE.MathUtils.clamp(halfW / (Math.tan(THREE.MathUtils.degToRad(30)) * a), 4.2, 6.6);
+      return { pos: target.clone().addScaledVector(dir, dist), target };
+    }
     if (a < 1.25) { camera.fov = 48; return { pos: new THREE.Vector3(0, 2.1, 3.4), target: new THREE.Vector3(0, 0.38, -0.05) }; }
     camera.fov = 38;
     return { pos: new THREE.Vector3(0, 1.55, 2.95), target: new THREE.Vector3(0, 0.42, -0.1) };
@@ -703,6 +711,7 @@ function start() {
     goTo(view, 1.0, () => {
       state = 'desk';
       app.classList.remove('is-focus');
+      hint.hidden = false; // tanıtım cümlesi, çipler ve düz liste bağlantısı geri gelsin
       const k = active; active = null;
       const b = k && document.querySelector('[data-open="' + k + '"]');
       if (b) b.focus({ preventScroll: true });
@@ -737,7 +746,9 @@ function start() {
     screenEl.style.left = left.toFixed(1) + 'px';
     screenEl.style.top = top.toFixed(1) + 'px';
     screenEl.style.width = width.toFixed(1) + 'px';
-    screenEl.style.height = height.toFixed(1) + 'px';
+    // dar ekranda panel içeriği kadar uzar, en fazla ekranın altına kadar; altta boş alan kalmaz
+    screenEl.style.height = narrow ? 'auto' : height.toFixed(1) + 'px';
+    screenEl.style.maxHeight = narrow ? height.toFixed(1) + 'px' : '';
     screenEl.style.fontSize = Math.max(18, Math.min(28, width / 26)).toFixed(1) + 'px';
   }
 
