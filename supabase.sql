@@ -8,10 +8,21 @@ create table if not exists public.guestbook_entries (
 );
 alter table public.guestbook_entries enable row level security;
 revoke all on public.guestbook_entries from anon, authenticated;
-grant select (name,message,created_at) on public.guestbook_entries to anon;
+grant select (name,message,created_at,approved) on public.guestbook_entries to anon;
 grant insert (name,message) on public.guestbook_entries to anon;
 create policy "read_approved" on public.guestbook_entries for select to anon using (approved = true);
 create policy "submit_pending" on public.guestbook_entries for insert to anon with check (approved = false);
 -- Moderasyon: Supabase Dashboard > Table Editor üzerinden approved=true yapın.
 -- ÜRETİM GÜVENLİĞİ: Bu doğrudan public API'de IP rate-limit ve CAPTCHA yoktur.
 -- Trafiğe açmadan önce CAPTCHA doğrulayan bir sunucu/edge function ve rate limit ekleyin.
+-- Spam freni (creative-playground projesinde kurulu): son 10 dakikada 30'dan fazla not gelirse yeni ekleme reddedilir.
+create or replace function public.guestbook_rate_limit()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if (select count(*) from public.guestbook_entries where created_at > now() - interval '10 minutes') >= 30 then
+    raise exception 'rate_limited';
+  end if;
+  return new;
+end; $$;
+revoke all on function public.guestbook_rate_limit() from public, anon, authenticated;
+create trigger guestbook_rate_limit before insert on public.guestbook_entries for each row execute function public.guestbook_rate_limit();
