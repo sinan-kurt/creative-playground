@@ -219,6 +219,12 @@ function buildMonitor(screenTex) {
   neck.position.y = 0.09; g.add(neck);
   const body = new THREE.Mesh(new RoundedBoxGeometry(0.94, 0.76, 0.62, 5, 0.06), beige);
   body.position.set(0, 0.5, -0.05); g.add(body);
+  // kasanın üstünde havalandırma yarıkları (CRT ısınır)
+  const ventMat = std(0x6E6656, 0.85);
+  for (let i = 0; i < 7; i++) {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.004, 0.014), ventMat);
+    v.position.set(0, 0.879, -0.32 + i * 0.03); g.add(v);
+  }
   const back = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.56, 0.3, 4, 0.08), beige);
   back.position.set(0, 0.48, -0.42); g.add(back);
   const bezel = new THREE.Mesh(new RoundedBoxGeometry(0.8, 0.6, 0.04, 3, 0.03), dark);
@@ -239,17 +245,29 @@ function buildKeyboard() {
   const g = new THREE.Group();
   const base = new THREE.Mesh(new RoundedBoxGeometry(0.82, 0.04, 0.27, 3, 0.012), std(0xD3C8AE, 0.6));
   base.position.y = 0.02; base.rotation.x = 0.04; g.add(base);
-  const keyGeo = new RoundedBoxGeometry(0.045, 0.022, 0.045, 2, 0.008);
-  const keys = new THREE.InstancedMesh(keyGeo, std(0xE8E0CC, 0.5), 15 * 4 + 1);
+  // tuşların arasındaki koyu yuva: tuşlar ayrık okunur
+  const well = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.006, 0.245), std(0x4A4438, 0.9));
+  well.position.y = 0.042; well.rotation.x = 0.04; g.add(well);
+  // daha yüksek tuşlar (gölge düşürecek kadar), harf tuşları açık, kenar/işlev tuşları koyu bej
+  const keyGeo = new RoundedBoxGeometry(0.044, 0.032, 0.044, 2, 0.009);
+  const keys = new THREE.InstancedMesh(keyGeo, std(0xffffff, 0.5), 15 * 4 + 5);
+  const light = new THREE.Color(0xEDE6D3), mod = new THREE.Color(0xB7AC92), accent = new THREE.Color(0xC9693E);
   const m = new THREE.Matrix4();
   let n = 0;
   for (let r = 0; r < 4; r++) for (let c = 0; c < 15; c++) {
-    m.makeTranslation(-0.36 + c * 0.0515 + (r % 2) * 0.012, 0.05 + r * 0.002, -0.08 + r * 0.055);
-    keys.setMatrixAt(n++, m);
+    // üst sıra işlev tuşları: dörtlü gruplar arasında boşluk
+    const gap = r === 0 ? Math.floor(c / 4) * 0.008 - 0.012 : 0;
+    m.makeTranslation(-0.36 + c * 0.0515 + (r % 2) * 0.012 + gap, 0.06 + r * 0.002, -0.08 + r * 0.055);
+    keys.setMatrixAt(n, m);
+    const isMod = r === 0 || c === 0 || c === 14 || (r === 3 && (c === 1 || c === 13));
+    keys.setColorAt(n, r === 0 && c === 0 ? accent : (isMod ? mod : light));
+    n++;
   }
-  m.makeScale(6, 1, 1).setPosition(0, 0.05, 0.145);
-  keys.setMatrixAt(n++, m);
-  keys.castShadow = true;
+  // alt sıra: boşluk tuşu ve iki yanında koyu tuşlar
+  m.makeScale(5.4, 1, 1).setPosition(0, 0.06, 0.145); keys.setMatrixAt(n, m); keys.setColorAt(n++, light);
+  [-0.29, -0.21, 0.21, 0.29].forEach((x) => { m.makeScale(1.4, 1, 1).setPosition(x, 0.06, 0.145); keys.setMatrixAt(n, m); keys.setColorAt(n++, mod); });
+  keys.instanceColor.needsUpdate = true;
+  keys.castShadow = true; keys.receiveShadow = true;
   g.add(keys);
   return shadowAll(g);
 }
@@ -262,6 +280,24 @@ function buildLamp() {
   const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.62, 12), brass);
   arm1.position.set(0.05, 0.32, 0); arm1.rotation.z = -0.18; g.add(arm1);
   const j1 = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), brass); j1.position.set(0.105, 0.62, 0); g.add(j1);
+  // mafsallar: kolların birleştiği yerde sıkma topuzu + vida başı (kolun nasıl döndüğünü anlatır)
+  const knobMat = std(0x8C6A3C, 0.35, 0.9), screwMat = std(0xD8D2C4, 0.25, 1);
+  const knob = (x, y, z, r = 0.02) => {
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.07, 20), knobMat);
+    k.rotation.x = Math.PI / 2; k.position.set(x, y, z); g.add(k);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.25, r * 1.25, 0.014, 20), knobMat);
+    cap.rotation.x = Math.PI / 2; cap.position.set(x, y, z + 0.042); g.add(cap);
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r * 0.5, 0.004, 14), screwMat);
+    screw.rotation.x = Math.PI / 2; screw.position.set(x, y, z + 0.05); g.add(screw);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(r * 0.8, 0.002, 0.003), std(0x3A3A3A, 0.6));
+    slot.position.set(x, y, z + 0.0525); slot.rotation.z = 0.6; g.add(slot);
+  };
+  knob(0.105, 0.62, 0);          // dirsek
+  knob(0.528, 0.822, 0.03, 0.017); // başlık bağlantısı
+  // tabandaki dönme göbeği
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.03, 24), knobMat);
+  hub.position.set(0, 0.052, 0); g.add(hub);
+  knob(0, 0.07, 0, 0.016);
   const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 12), brass);
   arm2.position.set(0.3, 0.72, 0.03); arm2.rotation.z = -1.15; g.add(arm2);
   const head = new THREE.Group(); head.position.set(0.52, 0.8, 0.06); g.add(head);
@@ -345,8 +381,21 @@ function buildEnvelope() {
   body.position.y = 0.006; g.add(body);
   const s = new THREE.Shape();
   s.moveTo(-0.22, 0); s.lineTo(0.22, 0); s.lineTo(0, 0.17); s.closePath();
+  // zarfın arkası: iki yan kat ve alt kat üst üste binmiş, her biri biraz farklı ton
+  // (kağıdın katlanarak yapıldığını gösteren kat izleri)
+  const tri = (pts, col, y) => {
+    const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]); pts.slice(1).forEach(([x, z]) => sh.lineTo(x, z)); sh.closePath();
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: 0.002, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0012, bevelSegments: 1 }), std(col, 0.88));
+    m.rotation.x = Math.PI / 2; m.position.y = y; g.add(m);
+  };
+  tri([[-0.22, -0.145], [-0.22, 0.145], [-0.005, 0.01]], 0xEFCDD3, 0.0135);
+  tri([[0.22, -0.145], [0.22, 0.145], [0.005, 0.01]], 0xEFCDD3, 0.0135);
+  tri([[-0.22, 0.145], [0.22, 0.145], [0, -0.015]], 0xF5DCE1, 0.0158);
   const flap = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.004, bevelEnabled: false }), std(0xE6BFC7, 0.85));
-  flap.rotation.x = -Math.PI / 2; flap.position.set(0, 0.013, -0.145); g.add(flap);
+  flap.rotation.x = -Math.PI / 2; flap.position.set(0, 0.018, -0.145); g.add(flap);
+  // kağıt kalınlığı: alt kenarda hafif koyu bir şerit
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(0.442, 0.004, 0.004), std(0xC99AA4, 0.9));
+  edge.position.set(0, 0.004, 0.146); g.add(edge);
   const seal = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.042, 0.014, 28), std(0xA3162B, 0.4));
   seal.position.set(0, 0.022, 0.025); g.add(seal);
   const hs = new THREE.Shape();
@@ -442,8 +491,10 @@ function buildHat() {
   // iç kayış (siperliğin altında görünen koyu bant)
   const band = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.008, 6, 40), std(0x2B2B2B, 0.8));
   band.rotation.x = Math.PI / 2; band.scale.set(1, 1.12, 1); band.position.set(0, 0.1, 0.05); g.add(band);
-  const sticker = new THREE.Mesh(new THREE.CircleGeometry(0.035, 20), std(0x1C3F7A, 0.6));
-  sticker.position.set(0, 0.17, 0.215); sticker.rotation.x = -0.55; g.add(sticker);
+  // (önceki mavi yuvarlak süs kaldırıldı: kaburgalar ve siperlik baretin nasıl üretildiğini zaten anlatıyor)
+  // siperliğin alt yüzü: koyu, böylece kenar kalınlığı ve alt bölüm okunur
+  const under = new THREE.Mesh(new THREE.RingGeometry(0.14, 0.205, 48), std(0x9E7414, 0.7, 0, { side: THREE.DoubleSide }));
+  under.rotation.x = Math.PI / 2; under.scale.set(1, 1.22, 1); under.position.set(0, 0.0845, 0.08); g.add(under);
   g.rotation.y = -0.35;
   return shadowAll(g);
 }
@@ -453,11 +504,18 @@ function buildCamera() {
   // fotoğraf makinesi: parlak siyah plastik, deri tutma yeri, kenarları yakalayan metal
   const black = std(0x26262B, 0.38, 0.1);
   const silver = std(0xD4D6DA, 0.22, 1);
-  const leather = std(0x1A1A1C, 0.85, 0, { bumpMap: leatherTex(), bumpScale: 1.2 });
+  // deri biraz daha açık ve belirgin dokulu ki karanlıkta da "kaplama" olarak okunsun
+  const leather = std(0x34302C, 0.92, 0, { bumpMap: leatherTex(), bumpScale: 3 });
   const body = new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.2, 0.12, 4, 0.025), black);
   body.position.y = 0.1; g.add(body);
   const grip = new THREE.Mesh(new RoundedBoxGeometry(0.345, 0.12, 0.125, 3, 0.02), leather);
   grip.position.y = 0.09; g.add(grip);
+  // sağ önde şişkin tutma çıkıntısı (parmakların kavradığı yer)
+  const handle = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.15, 0.04, 3, 0.018), leather);
+  handle.position.set(0.128, 0.098, 0.072); g.add(handle);
+  // gövde ile kaplama arasındaki ince birleşim çizgisi
+  const seam = new THREE.Mesh(new THREE.BoxGeometry(0.347, 0.003, 0.127), std(0x0E0E10, 0.6));
+  seam.position.y = 0.151; g.add(seam);
   // gövde kenarında ince metal şerit: karanlıkta silüeti okutur
   const trim = new THREE.Mesh(new THREE.BoxGeometry(0.344, 0.006, 0.124), silver);
   trim.position.y = 0.153; g.add(trim);
@@ -470,7 +528,18 @@ function buildCamera() {
   const lens2 = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.07, 0.05, 40), silver);
   lens2.rotation.x = Math.PI / 2; lens2.position.set(0, 0.1, 0.145); g.add(lens2);
   // lens camı: düz disk yerine hafif bombeli, koyu mavi-yeşil kaplamalı cam; ortam yansımasını yakalar
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x0B1420, roughness: 0.02, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 0.6, iridescenceIOR: 1.6, emissive: 0x10203A, emissiveIntensity: 0.25, envMapIntensity: 3 });
+  // lensin içi: ön camın arkasında katmanlı derinlik (iç halkalar, altıgen diyafram)
+  const lensIn = new THREE.Mesh(new THREE.CircleGeometry(0.056, 40), std(0x050608, 0.5));
+  lensIn.position.set(0, 0.1, 0.1705); g.add(lensIn);
+  [[0.046, 0.1715, 0x3A3E46], [0.034, 0.1725, 0x22252B], [0.024, 0.1735, 0x4A4F59]].forEach(([r, z, c]) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.0022, 6, 40), std(c, 0.3, 0.8));
+    ring.position.set(0, 0.1, z); g.add(ring);
+  });
+  const aperture = new THREE.Mesh(new THREE.CircleGeometry(0.018, 6), new THREE.MeshBasicMaterial({ color: 0x0A0710 }));
+  aperture.position.set(0, 0.1, 0.174); aperture.rotation.z = 0.3; g.add(aperture);
+  const coating = new THREE.Mesh(new THREE.CircleGeometry(0.01, 20), new THREE.MeshBasicMaterial({ color: 0x6B4FA8, transparent: true, opacity: 0.5 }));
+  coating.position.set(0.012, 0.09, 0.1745); g.add(coating);
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x1A2A3A, roughness: 0.02, metalness: 0.05, transparent: true, opacity: 0.45, clearcoat: 1, clearcoatRoughness: 0.02, iridescence: 0.6, iridescenceIOR: 1.6, envMapIntensity: 3, depthWrite: false });
   // büyük bir kürenin tepe kapağı: tabanı lens çapında (~0.057), ~1.5 cm bombe
   const glass = new THREE.Mesh(new THREE.SphereGeometry(0.11, 40, 16, 0, Math.PI * 2, 0, 0.52), glassMat);
   glass.rotation.x = Math.PI / 2; glass.position.set(0, 0.1, 0.168 - 0.11 * Math.cos(0.52)); g.add(glass);
@@ -500,6 +569,9 @@ function buildJar() {
   g.add(glass);
   // cam kenarları: dip, omuz ve ağızda parlak halkalar, küçük ölçekte bile "cam kavanoz" okunur
   const edge = new THREE.MeshPhysicalMaterial({ color: 0xFFFFFF, roughness: 0.05, transparent: true, opacity: 0.55, clearcoat: 1, envMapIntensity: 2 });
+  // kalın cam taban: kavanozlarda dipte görünen o kalın, hafif yeşilimsi cam
+  const glassBase = new THREE.Mesh(new THREE.CylinderGeometry(0.074, 0.07, 0.016, 40), new THREE.MeshPhysicalMaterial({ color: 0xCFE8DA, roughness: 0.05, transparent: true, opacity: 0.42, clearcoat: 1, envMapIntensity: 2 }));
+  glassBase.position.y = 0.008; g.add(glassBase);
   [[0.076, 0.008], [0.079, 0.17], [0.06, 0.212]].forEach(([r, y]) => {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.003, 8, 44), edge);
     ring.rotation.x = Math.PI / 2; ring.position.y = y; g.add(ring);
