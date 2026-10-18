@@ -613,6 +613,34 @@ function buildJar() {
   return shadowAll(g);
 }
 
+function buildNotebook() {
+  // ziyaretçi defteri: deri kapak, kenarlardan görünen sarımtırak sayfalar, lastik bant, sarkan ayraç
+  const g = new THREE.Group();
+  const cover = std(0x5A2E1E, 0.75, 0, { bumpMap: leatherTex(), bumpScale: 0.8 });
+  const bottom = new THREE.Mesh(new RoundedBoxGeometry(0.23, 0.006, 0.31, 2, 0.003), cover);
+  bottom.position.y = 0.003; g.add(bottom);
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.218, 0.018, 0.298), std(0xEADBB4, 0.95));
+  pages.position.set(0.004, 0.015, 0); g.add(pages);
+  // sayfa kenarlarında ince çizgiler: kâğıt tabakaları
+  for (let i = 0; i < 4; i++) {
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.2195, 0.0008, 0.2995), std(0xC9B48A, 0.95));
+    l.position.set(0.004, 0.009 + i * 0.004, 0); g.add(l);
+  }
+  const top = new THREE.Mesh(new RoundedBoxGeometry(0.23, 0.006, 0.31, 2, 0.003), cover);
+  top.position.y = 0.027; g.add(top);
+  const spine = new THREE.Mesh(new RoundedBoxGeometry(0.014, 0.03, 0.31, 2, 0.006), std(0x48231A, 0.7));
+  spine.position.set(-0.112, 0.015, 0); g.add(spine);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.032, 0.312), std(0x1C1412, 0.6));
+  band.position.set(0.085, 0.016, 0); g.add(band);
+  const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.001, 0.06), std(0xB0302A, 0.6));
+  ribbon.position.set(0.02, 0.003, 0.18); ribbon.rotation.y = 0.15; g.add(ribbon);
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.04), std(0xEFE2C2, 0.9));
+  label.rotation.x = -Math.PI / 2; label.position.set(-0.01, 0.0305, -0.06); g.add(label);
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.003), std(0x6E5B45, 0.9));
+  line.rotation.x = -Math.PI / 2; line.position.set(-0.01, 0.031, -0.06); g.add(line);
+  return shadowAll(g);
+}
+
 function buildPencil() {
   // kullanım izi: ucu biraz körelmiş, silgisi aşınmış bir kurşun kalem
   const g = new THREE.Group();
@@ -796,6 +824,7 @@ function start() {
   const cam = buildCamera(); cam.position.set(0.98, 0, -0.12); scene.add(cam);
   const bulb = buildBulb(); bulb.position.set(-0.46, 0, 0.5); bulb.rotation.y = 0.5; scene.add(bulb);
   const jar = buildJar(); jar.position.set(0.66, 0, 0.02); jar.scale.setScalar(1.15); scene.add(jar);
+  const notebook = buildNotebook(); notebook.position.set(-0.42, 0, 0.2); notebook.rotation.y = 0.22; scene.add(notebook);
 
   /* ---- malzemeler: cam, metal ve parlak plastik yansıtacak bir ortam ---- */
   // Yalnızca nesnelere uygulanır: duvar, masa ve monitör gece atmosferini korur.
@@ -813,7 +842,7 @@ function start() {
   /* ---- temas gölgeleri: nesneler masaya gerçekten değsin ---- */
   [[monitor, 0.42, 0.34, 0.6], [keyboard, 0.46, 0.17, 0.45], [lamp, 0.19, 0.19, 0.6], [plant, 0.17, 0.17, 0.55],
    [envelope, 0.27, 0.2, 0.35], [tea, 0.19, 0.19, 0.5], [hat, 0.3, 0.27, 0.55], [cam, 0.23, 0.15, 0.6],
-   [bulb, 0.13, 0.09, 0.45], [jar, 0.11, 0.11, 0.55]].forEach(([obj, rx, rz, s]) => {
+   [bulb, 0.13, 0.09, 0.45], [jar, 0.11, 0.11, 0.55], [notebook, 0.16, 0.2, 0.5]].forEach(([obj, rx, rz, s]) => {
     const sh = contactShadow(rx, rz, s);
     sh.position.set(obj.position.x, 0.002, obj.position.z);
     sh.rotation.z = obj.rotation.y;
@@ -831,14 +860,16 @@ function start() {
     }), transparent: true, depthWrite: false,
   }));
   stain.rotation.x = -Math.PI / 2; stain.position.set(-0.18, 0.003, 0.64); scene.add(stain);
-  const pencil = buildPencil(); pencil.position.set(-0.5, 0, 0.2); pencil.rotation.y = 0.9; scene.add(pencil);
+  // kalem defterin üstünde duruyor: "buraya yaz" daveti
+  // (defterin çocuğu: defter üzerine gelince kalkarken kalem de onunla birlikte kalkar)
+  const pencil = buildPencil(); pencil.position.set(0.0, 0.03, 0.01); pencil.rotation.y = 0.53; notebook.add(pencil);
 
   [[tea, 0.5], [jar, 0.5], [cam, 0.45], [hat, 0.3], [lamp, 0.4], [bulb, 0.4], [pencil, 0.3], [keyboard, 0.15], [plant, 0.2]].forEach(([o, k]) => applyEnv(o, k));
 
   monitor.userData.screen.getWorldPosition(screenGlow.position);
   screenGlow.position.z += 0.25;
 
-  const clickables = { monitor, envelope, jar, tea, hat, camera: cam, bulb, lamp };
+  const clickables = { monitor, envelope, jar, notebook, tea, hat, camera: cam, bulb, lamp };
   Object.entries(clickables).forEach(([key, obj]) => {
     obj.traverse((o) => { o.userData.key = key; });
     obj.userData.key = key;
@@ -957,6 +988,8 @@ function start() {
 
   function focusOn(key) {
     if (key === 'lamp') { toggleLamp(); return; }
+    // defter monitörde değil, masanın üstünde açık bir defter olarak açılır
+    if (key === 'notebook') { hideTip(); window.dispatchEvent(new CustomEvent('open-notebook')); return; }
     if (!ITEMS[key]) return;
     if (state === 'focus' && active === key) return;
     active = key;
@@ -1058,8 +1091,9 @@ function start() {
     if (k) {
       const it = ITEMS[k];
       tip.replaceChildren();
-      const a = document.createElement('strong'); a.textContent = it ? it.object : 'Lamba';
-      const b = document.createElement('span'); b.textContent = it ? it.title : 'aç / kapat';
+      const extra = { lamp: ['Lamba', 'aç / kapat'], notebook: ['Defter', 'bir iz bırak'] }[k] || ['', ''];
+      const a = document.createElement('strong'); a.textContent = it ? it.object : extra[0];
+      const b = document.createElement('span'); b.textContent = it ? it.title : extra[1];
       tip.append(a, b);
       tip.hidden = false;
       tip.style.transform = `translate(${(e.clientX - r.left + 16).toFixed(0)}px, ${(e.clientY - r.top + 14).toFixed(0)}px)`;

@@ -1,0 +1,184 @@
+---
+// Ziyaretçi defteri: masanın üstünde açılan, sarımtırak kâğıtlı bir defter.
+// Sol sayfa: onaylanmış notlar. Sağ sayfa: yazma alanı.
+// mode="overlay": ana sayfada masadaki deftere dokununca açılır (başlangıçta gizli).
+// mode="page": /guestbook adresinde doğrudan açık durur.
+const { mode = 'overlay' } = Astro.props;
+const url = import.meta.env.PUBLIC_SUPABASE_URL || '';
+const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '';
+const overlay = mode === 'overlay';
+---
+<div class:list={['nb-wrap', overlay ? 'nb-overlay' : 'nb-page']} id="notebook" hidden={overlay} data-url={url} data-key={key}>
+  <div class="nb-book" role={overlay ? 'dialog' : undefined} aria-modal={overlay ? 'true' : undefined} aria-labelledby="nb-title">
+    <section class="nb-sheet nb-left" aria-labelledby="nb-notes-title">
+      <p class="nb-hand nb-date">masadaki defter</p>
+      <h2 class="nb-hand nb-h" id="nb-notes-title">Bırakılan notlar</h2>
+      <ol class="nb-notes" id="nb-notes" aria-live="polite">
+        <li class="nb-empty">Notlar yükleniyor…</li>
+      </ol>
+    </section>
+    <section class="nb-sheet nb-right">
+      <h2 class="nb-hand nb-h" id="nb-title">Bir iz bırak</h2>
+      <p class="nb-lede">Buraya uğradıysan iki satır bırak. Sonra dönüp okumak güzel oluyor.</p>
+      <form id="nb-form" class="nb-form" novalidate>
+        <label for="nb-name">İsmin</label>
+        <input id="nb-name" name="name" maxlength="40" minlength="2" required autocomplete="name" placeholder="Sen kimsin?" />
+        <label for="nb-message">Notun</label>
+        <textarea id="nb-message" name="message" maxlength="400" minlength="3" required rows="5" placeholder="İki satır yeter…"></textarea>
+        <div class="nb-hp" aria-hidden="true"><label for="nb-website">Website</label><input id="nb-website" name="website" tabindex="-1" autocomplete="off" /></div>
+        <div class="nb-row">
+          <button type="submit" id="nb-send" class="nb-send">Deftere yaz</button>
+          <span class="nb-count" id="nb-count">0 / 400</span>
+        </div>
+        <p class="nb-status" id="nb-status" role="status" aria-live="polite"></p>
+        <p class="nb-fine">Notun onaylandıktan sonra sol sayfada görünür. E-posta ya da kişisel bilgi yazma.</p>
+      </form>
+    </section>
+    {overlay && <button type="button" class="nb-close" id="nb-close">← Masaya dön</button>}
+  </div>
+</div>
+
+<style is:global>
+/* Defter: koyu, sıcak sahnenin üstünde sarımtırak kâğıt. Başlıklar el yazısı, okunacak her şey temiz fontta. */
+.nb-wrap { --nb-paper: #F3E5C2; --nb-paper2: #EFDDB4; --nb-line: rgba(92, 120, 160, 0.22); --nb-margin: rgba(196, 72, 60, 0.45); --nb-ink: #2B2117; --nb-muted: #6E5B45; --nb-cover: #4A2B1C; --nb-accent: #A8402A;
+  --nb-hand: "Caveat", "Segoe Print", "Bradley Hand", cursive; --nb-ui: "Bricolage Grotesque", "DM Sans", system-ui, sans-serif; }
+.nb-overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: rgba(8, 6, 12, 0.62); backdrop-filter: blur(3px); overflow-y: auto; overscroll-behavior: contain; }
+.nb-overlay[hidden] { display: none; }
+.nb-page { display: grid; place-items: center; padding: 32px 16px 56px; }
+.nb-book { position: relative; width: min(960px, 100%); display: grid; grid-template-columns: 1fr 1fr; background: var(--nb-cover); border-radius: 14px; padding: 12px; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(255, 220, 180, 0.08); font-family: var(--nb-ui); color: var(--nb-ink); }
+.nb-overlay .nb-book { animation: nb-open 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.1); margin-block: 48px 16px; }
+@keyframes nb-open { from { opacity: 0; transform: translateY(40px) scale(0.92) rotateX(12deg); } }
+.nb-sheet { position: relative; min-height: 520px; padding: 34px 32px 28px 46px; background-color: var(--nb-paper);
+  background-image: linear-gradient(to right, transparent 34px, var(--nb-margin) 34px, var(--nb-margin) 35.5px, transparent 35.5px), repeating-linear-gradient(to bottom, transparent 0 31px, var(--nb-line) 31px 32px);
+  background-position: 0 0, 0 22px; display: flex; flex-direction: column; min-width: 0; }
+.nb-left { border-radius: 8px 2px 2px 8px; box-shadow: inset -18px 0 24px -14px rgba(60, 35, 15, 0.35); }
+.nb-right { border-radius: 2px 8px 8px 2px; background-color: var(--nb-paper2); box-shadow: inset 18px 0 24px -14px rgba(60, 35, 15, 0.35); }
+.nb-hand { font-family: var(--nb-hand); font-weight: 600; margin: 0; }
+.nb-date { font-size: 18px; color: var(--nb-muted); line-height: 32px; }
+.nb-h { font-size: 34px; line-height: 1.05; color: var(--nb-ink); margin-bottom: 10px; text-wrap: balance; }
+.nb-notes { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 440px; display: flex; flex-direction: column; gap: 14px; padding-right: 6px; scrollbar-color: rgba(110, 91, 69, 0.4) transparent; }
+.nb-note { padding-bottom: 12px; border-bottom: 1px dashed rgba(110, 91, 69, 0.3); }
+.nb-note p { margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nb-note footer { margin-top: 4px; display: flex; gap: 8px; align-items: baseline; }
+.nb-note b { font-family: var(--nb-hand); font-size: 21px; font-weight: 600; color: var(--nb-accent); }
+.nb-note time { font-size: 12px; color: var(--nb-muted); }
+.nb-empty { font-size: 15px; line-height: 1.6; color: var(--nb-muted); }
+.nb-lede { margin: 0 0 14px; font-size: 15.5px; line-height: 1.55; color: var(--nb-ink); max-width: 38ch; }
+.nb-form { display: flex; flex-direction: column; gap: 6px; }
+.nb-form label { font-size: 13px; font-weight: 600; color: var(--nb-muted); letter-spacing: 0.02em; margin-top: 6px; }
+.nb-form input, .nb-form textarea { font: inherit; font-size: 16px; color: var(--nb-ink); background: rgba(255, 252, 240, 0.65); border: 1.5px solid rgba(110, 91, 69, 0.35); border-radius: 8px; padding: 10px 12px; resize: vertical; }
+.nb-form input:focus-visible, .nb-form textarea:focus-visible { outline: 2px solid var(--nb-accent); outline-offset: 1px; border-color: transparent; }
+.nb-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.nb-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.nb-send { font: inherit; font-weight: 700; font-size: 15px; color: #FFF6E6; background: var(--nb-accent); border: 0; border-radius: 999px; min-height: 44px; padding: 0 22px; cursor: pointer; box-shadow: 0 3px 0 #6E2414; }
+.nb-send:hover { filter: brightness(1.06); }
+.nb-send:active { transform: translateY(2px); box-shadow: 0 1px 0 #6E2414; }
+.nb-send:disabled { opacity: 0.55; cursor: not-allowed; }
+.nb-send:focus-visible { outline: 2px solid var(--nb-ink); outline-offset: 3px; }
+.nb-count { font-size: 12px; color: var(--nb-muted); font-variant-numeric: tabular-nums; }
+.nb-status { min-height: 1.4em; margin: 4px 0 0; font-size: 14px; color: var(--nb-ink); }
+.nb-fine { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--nb-muted); }
+.nb-close { position: absolute; left: 0; top: -54px; min-height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(241, 233, 220, 0.2); background: rgba(12, 10, 18, 0.75); color: #F1E9DC; font: 600 14px var(--nb-ui); cursor: pointer; }
+.nb-close:hover { border-color: #FFB347; }
+.nb-close:focus-visible { outline: 2px solid #FFB347; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .nb-book { grid-template-columns: 1fr; padding: 8px; }
+  .nb-right { order: -1; border-radius: 8px 8px 2px 2px; box-shadow: inset 0 -16px 22px -14px rgba(60, 35, 15, 0.3); }
+  .nb-left { border-radius: 2px 2px 8px 8px; box-shadow: inset 0 16px 22px -14px rgba(60, 35, 15, 0.3); }
+  .nb-sheet { min-height: 0; padding: 26px 20px 22px 40px; }
+  .nb-notes { max-height: none; overflow: visible; }
+  .nb-h { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .nb-overlay .nb-book { animation: none; } }
+</style>
+
+<script>
+  const root = document.getElementById('notebook') as HTMLElement | null;
+  if (root) {
+    const url = root.dataset.url || '';
+    const key = root.dataset.key || '';
+    const api = url && key ? `${url.replace(/\/$/, '')}/rest/v1/guestbook_entries` : '';
+    const headers: Record<string, string> = { apikey: key, Authorization: `Bearer ${key}` };
+    const list = root.querySelector('#nb-notes') as HTMLOListElement;
+    const form = root.querySelector('#nb-form') as HTMLFormElement;
+    const status = root.querySelector('#nb-status') as HTMLElement;
+    const send = root.querySelector('#nb-send') as HTMLButtonElement;
+    const msg = root.querySelector('#nb-message') as HTMLTextAreaElement;
+    const count = root.querySelector('#nb-count') as HTMLElement;
+    const closeBtn = root.querySelector('#nb-close') as HTMLButtonElement | null;
+    const isOverlay = root.classList.contains('nb-overlay');
+    let loaded = false;
+    let lastFocus: Element | null = null;
+
+    const empty = (text: string) => { const li = document.createElement('li'); li.className = 'nb-empty'; li.textContent = text; list.replaceChildren(li); };
+    const fmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    async function load() {
+      loaded = true;
+      if (!api) { empty('Defter yeni açıldı, sayfalar henüz boş. Yakında ilk notlar burada olacak.'); return; }
+      try {
+        const res = await fetch(`${api}?select=name,message,created_at&approved=eq.true&order=created_at.desc&limit=30`, { headers });
+        if (!res.ok) throw new Error('fetch');
+        const rows = await res.json();
+        if (!rows.length) { empty('Henüz kimse yazmadı. İlk satırı sen yaz.'); return; }
+        list.replaceChildren(...rows.map((row: { name: string; message: string; created_at: string }) => {
+          const li = document.createElement('li'); li.className = 'nb-note';
+          const p = document.createElement('p'); p.textContent = String(row.message).slice(0, 400);
+          const f = document.createElement('footer');
+          const b = document.createElement('b'); b.textContent = String(row.name).slice(0, 40);
+          const t = document.createElement('time'); t.dateTime = row.created_at; t.textContent = fmt.format(new Date(row.created_at));
+          f.append(b, t); li.append(p, f); return li;
+        }));
+      } catch { empty('Notlar şu an açılmadı. Biraz sonra tekrar bak.'); }
+    }
+
+    if (!api) {
+      send.disabled = true;
+      status.textContent = 'Defter çok yakında yazmaya açılıyor.';
+    }
+    msg.addEventListener('input', () => { count.textContent = `${msg.value.length} / 400`; });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!api) return;
+      const fd = new FormData(form);
+      if (fd.get('website')) return;
+      const name = String(fd.get('name') || '').trim();
+      const message = String(fd.get('message') || '').trim();
+      if (name.length < 2 || name.length > 40) { status.textContent = 'İsmin 2 ile 40 karakter arasında olmalı.'; return; }
+      if (message.length < 3 || message.length > 400) { status.textContent = 'Notun 3 ile 400 karakter arasında olmalı.'; return; }
+      send.disabled = true; status.textContent = 'Yazılıyor…';
+      try {
+        const res = await fetch(api, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ name, message }) });
+        if (!res.ok) throw new Error('insert');
+        status.textContent = 'Teşekkürler, notun deftere yazıldı. Onaylanınca sol sayfada görünecek.';
+        form.reset(); count.textContent = '0 / 400';
+      } catch { status.textContent = 'Not gönderilemedi. Bağlantını kontrol edip tekrar dene.'; }
+      finally { send.disabled = false; }
+    });
+
+    function open() {
+      if (!isOverlay) return;
+      lastFocus = document.activeElement;
+      root!.hidden = false;
+      document.documentElement.classList.add('scroll-lock');
+      if (!loaded) load();
+      (root!.querySelector('#nb-name') as HTMLInputElement).focus({ preventScroll: true });
+    }
+    function close() {
+      if (!isOverlay || root!.hidden) return;
+      root!.hidden = true;
+      document.documentElement.classList.remove('scroll-lock');
+      if (lastFocus instanceof HTMLElement) lastFocus.focus({ preventScroll: true });
+    }
+    if (isOverlay) {
+      window.addEventListener('open-notebook', open);
+      closeBtn?.addEventListener('click', close);
+      root.addEventListener('click', (e) => { if (e.target === root) close(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+      if (location.hash === '#defter') open();
+    } else {
+      load();
+    }
+  }
+</script>

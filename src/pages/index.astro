@@ -4,6 +4,7 @@
 const title = 'Sinan Kurt — Masam';
 const description = 'Gece, yağmurlu bir pencerenin önünde masam. Masadaki her nesne bir proje: dokun, monitörde açılsın.';
 const ogImage = new URL('/og-image.png', Astro.site).toString();
+import Notebook from '../components/Notebook.astro';
 ---
 <!doctype html>
 <html lang="tr">
@@ -21,7 +22,7 @@ const ogImage = new URL('/og-image.png', Astro.site).toString();
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="theme-color" content="#0C0A12"/>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=VT323&display=swap"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=VT323&family=Caveat:wght@500;600&display=swap"/>
 </head>
 <body>
 <style is:global>
@@ -151,7 +152,7 @@ html.scroll-lock, html.scroll-lock body { overflow: hidden; }
       <a class="name" href="/"><b>Sinan Kurt</b><span>İstanbul · web, oyun, girişim</span></a>
       <nav aria-label="Bağlantılar">
         <button type="button" data-open="monitor">Hakkımda</button>
-        <a href="/guestbook">Defter</a>
+        <a href="/guestbook" data-open="notebook">Defter</a>
         <a href="https://instagram.com/sina.hustle">Instagram ↗</a>
         <button type="button" id="sound" aria-pressed="false">Yağmur: kapalı</button>
       </nav>
@@ -174,12 +175,15 @@ html.scroll-lock, html.scroll-lock body { overflow: hidden; }
         <button type="button" data-open="hat">Baret<span>MetrajOS</span></button>
         <button type="button" data-open="camera">Fotoğraf makinesi<span>Offra Studio</span></button>
         <button type="button" data-open="bulb">Ampul<span>Sıradaki fikir</span></button>
+        <button type="button" data-open="notebook">Defter<span>Bir iz bırak</span></button>
       </div>
       <a class="list-link" href="#liste">ya da düz liste ↓</a>
     </div>
 
     <p class="toast" id="toast" role="status" aria-live="polite" hidden></p>
   </main>
+
+  <Notebook mode="overlay" />
 
   <section class="list" id="liste" aria-labelledby="liste-baslik">
     <div class="list-inner">
