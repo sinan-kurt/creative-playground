@@ -912,9 +912,10 @@ function start() {
       const dist = THREE.MathUtils.clamp(halfW / (Math.tan(THREE.MathUtils.degToRad(30)) * a), 4.2, 6.6);
       return { pos: target.clone().addScaledVector(dir, dist), target };
     }
-    if (a < 1.25) { camera.fov = 48; return { pos: new THREE.Vector3(0, 2.1, 3.4), target: new THREE.Vector3(0, 0.38, -0.05) }; }
+    if (a < 1.25) { camera.fov = 48; return { pos: new THREE.Vector3(0, 2.25, 3.4), target: new THREE.Vector3(0, 0.2, -0.05) }; }
     camera.fov = 38;
-    return { pos: new THREE.Vector3(0, 1.55, 2.95), target: new THREE.Vector3(0, 0.42, -0.1) };
+    // hedef biraz aşağıda: masa ekranda yukarı kayar, klavye alttaki yazı/çip alanının üstünde kalır
+    return { pos: new THREE.Vector3(0, 1.72, 2.95), target: new THREE.Vector3(0, 0.2, -0.1) };
   }
   const screenCenter = new THREE.Vector3();
   function focusView() {

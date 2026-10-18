@@ -71,6 +71,12 @@ h1, h2, p { margin: 0; }
 .hint .lede { font-size: clamp(16px, 2.2vw, 19px); font-weight: 600; color: var(--ink); max-width: 30ch; line-height: 1.35; text-wrap: balance; text-shadow: 0 1px 12px rgba(12, 10, 18, 0.9); }
 .hint p b { color: var(--ink); font-weight: 600; }
 .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 760px; }
+/* geniş ekranda alt alan alçak: cümle tek satır, çipler tek sıra, karartma kısa; masa ve klavye örtülmez */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .hint { gap: 8px; padding: 44px 24px 14px; background: linear-gradient(to top, rgba(12, 10, 18, 0.92), rgba(12, 10, 18, 0.7) 55%, transparent); }
+  .hint .lede { max-width: none; font-size: 17px; }
+  .chips { max-width: 1100px; }
+}
 .chips button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(12, 10, 18, 0.55); backdrop-filter: blur(6px); font-size: 13px; cursor: pointer; color: var(--ink); }
 .chips button span { color: var(--muted); margin-left: 6px; }
 .chips button:hover { border-color: var(--amber); }
